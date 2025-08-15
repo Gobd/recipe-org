@@ -38,7 +38,7 @@ export function HomePage() {
   const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
     try {
       await RecipeDB.addRecipe(recipe);
-      loadRecipes('', []);
+      loadRecipes(searchTerm, selectedTags);
     } catch (error) {
       console.error('Failed to add recipe:', error);
     }
@@ -47,7 +47,7 @@ export function HomePage() {
   const handleDeleteRecipe = async (id: string | number) => {
     try {
       await RecipeDB.deleteRecipe(id);
-      loadRecipes('', []);
+      loadRecipes(searchTerm, selectedTags);
     } catch (error) {
       console.error('Failed to delete recipe:', error);
     }
@@ -62,7 +62,7 @@ export function HomePage() {
       if (recipe) {
         const newTags = recipe.tags.filter((tag) => tag !== tagToRemove);
         await RecipeDB.updateRecipe(recipeId, { tags: newTags });
-        loadRecipes('', []);
+        loadRecipes(searchTerm, selectedTags);
       }
     } catch (error) {
       console.error('Failed to remove tag:', error);
@@ -98,11 +98,11 @@ export function HomePage() {
         availableTags={availableTags}
         onSearchTermChange={(t) => {
           setSearchTerm(t);
-          loadRecipes(t, []);
+          loadRecipes(t, selectedTags);
         }}
         onSelectedTagsChange={(t) => {
           setSelectedTags(t);
-          loadRecipes('', t);
+          loadRecipes(searchTerm, t);
         }}
       />
 
