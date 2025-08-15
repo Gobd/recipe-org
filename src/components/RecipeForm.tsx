@@ -1,35 +1,35 @@
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { TagInput } from "@/components/TagInput";
-import type { Recipe } from "@/types/recipe";
+import { useState } from 'react';
+import { TagInput } from '@/components/TagInput';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { Recipe } from '@/types/recipe';
 
 interface RecipeFormProps {
   availableTags: string[];
-  onAddRecipe: (recipe: Omit<Recipe, "id" | "createdAt">) => void;
+  onAddRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>) => void;
 }
 
 export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
-  const [recipeName, setRecipeName] = useState("");
-  const [recipePage, setRecipePage] = useState("");
+  const [recipeName, setRecipeName] = useState('');
+  const [recipePage, setRecipePage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!recipeName.trim()) return;
 
-    const newRecipe: Omit<Recipe, "id" | "createdAt"> = {
+    const newRecipe: Omit<Recipe, 'id' | 'createdAt'> = {
       name: recipeName.trim(),
       page: recipePage.trim() || undefined,
-      tags: tags
+      tags: tags,
     };
 
     onAddRecipe(newRecipe);
-    setRecipeName("");
-    setRecipePage("");
+    setRecipeName('');
+    setRecipePage('');
     setTags([]);
   };
 
@@ -49,7 +49,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
               required
             />
           </div>
-          
+
           <div>
             <Label htmlFor="recipe-page">Page</Label>
             <Input
@@ -61,7 +61,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
               className="mt-1"
             />
           </div>
-          
+
           <div>
             <Label>Tags</Label>
             <div className="mt-1">
@@ -73,7 +73,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
               />
             </div>
           </div>
-          
+
           <Button type="submit" className="w-full">
             Add Recipe
           </Button>
