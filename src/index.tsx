@@ -96,6 +96,16 @@ const RecipeDB = {
   },
 
   cleanupOrphanedTags(): void {
+    // First, remove recipe_tags entries that reference non-existent recipes
+    const deleteOrphanedAssociationsQuery = db.query(`
+      DELETE FROM recipe_tags 
+      WHERE recipe_id NOT IN (
+        SELECT id FROM recipes
+      )
+    `);
+    deleteOrphanedAssociationsQuery.run();
+
+    // Then, remove tags that have no recipe associations
     const deleteOrphanedTagsQuery = db.query(`
       DELETE FROM tags 
       WHERE id NOT IN (
@@ -163,6 +173,18 @@ const RecipeDB = {
       page: recipe.page || undefined,
       tags: tags.map((tag) => tag.name),
     };
+  },
+
+  getTagsWithCounts(): Array<{ name: string; count: number }> {
+    const query = db.query(`
+      SELECT t.name, COUNT(rt.recipe_id) as count
+      FROM tags t
+      LEFT JOIN recipe_tags rt ON t.id = rt.tag_id
+      GROUP BY t.id, t.name
+      ORDER BY count DESC, t.name ASC
+    `);
+    const rows = query.all() as any[];
+    return rows.map((row) => ({ count: row.count, name: row.name }));
   },
 
   searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
@@ -433,6 +455,21 @@ const server = serve({
         try {
           const tags = RecipeDB.getAllTags();
           return Response.json(tags);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/tags/counts': {
+      async GET() {
+        try {
+          const tagsWithCounts = RecipeDB.getTagsWithCounts();
+          return Response.json(tagsWithCounts);
         } catch (error) {
           console.error('API Error:', error);
           return Response.json(

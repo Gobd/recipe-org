@@ -49,6 +49,13 @@ export const RecipeDB = {
     };
   },
 
+  getTagsWithCounts: async (): Promise<
+    Array<{ name: string; count: number }>
+  > => {
+    const response = await fetch(`${API_BASE}/tags/counts`);
+    return response.json();
+  },
+
   searchRecipes: async (
     searchTerm: string,
     selectedTags: string[],

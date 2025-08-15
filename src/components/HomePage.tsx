@@ -1,6 +1,6 @@
 import { Shuffle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RecipeForm } from '@/components/RecipeForm';
 import { RecipeList } from '@/components/RecipeList';
 import { SearchBar } from '@/components/SearchBar';
@@ -10,12 +10,23 @@ import type { Recipe } from '@/types/recipe';
 
 export function HomePage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   const loadRecipes = async (searchTerm: string, selectedTags: string[]) => {
+    // Update URL params to reflect current search state
+    const newParams = new URLSearchParams();
+    if (searchTerm) {
+      newParams.set('search', searchTerm);
+    }
+    if (selectedTags.length > 0) {
+      newParams.set('tags', selectedTags.join(','));
+    }
+    setSearchParams(newParams);
+
     try {
       const [recipesData, tagsData] = await Promise.all([
         searchTerm || selectedTags.length > 0
@@ -32,8 +43,18 @@ export function HomePage() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipes): suppress dependency loadRecipes
   useEffect(() => {
-    loadRecipes('', []);
-  }, []);
+    const tagsParam = searchParams.get('tags');
+    const searchParam = searchParams.get('search');
+
+    if (tagsParam || searchParam) {
+      const tags = tagsParam ? tagsParam.split(',') : [];
+      setSelectedTags(tags);
+      setSearchTerm(searchParam || '');
+      loadRecipes(searchParam || '', tags);
+    } else {
+      loadRecipes('', []);
+    }
+  }, [searchParams]);
 
   const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
     try {

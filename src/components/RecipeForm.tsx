@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TagInput } from '@/components/TagInput';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ interface RecipeFormProps {
 }
 
 export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
+  const navigate = useNavigate();
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -74,9 +76,19 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Add Recipe
-          </Button>
+          <div className="space-y-2">
+            <Button type="submit" className="w-full">
+              Add Recipe
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate('/tags')}
+            >
+              View All Tags
+            </Button>
+          </div>
         </form>
       </CardContent>
     </Card>
