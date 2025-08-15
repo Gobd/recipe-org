@@ -53,13 +53,13 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
           </div>
 
           <div>
-            <Label htmlFor="recipe-page">Page</Label>
+            <Label htmlFor="recipe-page">Location</Label>
             <Input
               id="recipe-page"
               type="text"
               value={recipePage}
               onChange={(e) => setRecipePage(e.target.value)}
-              placeholder="Enter page reference..."
+              placeholder="Enter location reference..."
               className="mt-1"
             />
           </div>

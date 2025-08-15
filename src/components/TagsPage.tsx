@@ -70,6 +70,7 @@ export function TagsPage() {
           {tagsWithCounts.map((tag) => (
             <Card
               key={tag.name}
+              onClick={() => handleTagClick(tag.name)}
               className="hover:shadow-md transition-shadow cursor-pointer"
             >
               <CardContent className="pt-6">
@@ -78,7 +79,7 @@ export function TagsPage() {
                   onClick={() => handleTagClick(tag.name)}
                   className="w-full text-left flex justify-between items-center"
                 >
-                  <span className="text-lg font-medium text-gray-900">
+                  <span className="text-lg font-medium text-gray-900 cursor-pointer">
                     {tag.name}
                   </span>
                   <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">

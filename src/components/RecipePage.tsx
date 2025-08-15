@@ -204,7 +204,7 @@ export function RecipePage() {
             </div>
 
             <div>
-              <Label htmlFor="recipe-page">Page</Label>
+              <Label htmlFor="recipe-page">Location</Label>
               <Input
                 id="recipe-page"
                 type="text"
