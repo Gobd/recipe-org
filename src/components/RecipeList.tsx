@@ -58,7 +58,7 @@ export function RecipeList({
                             e.stopPropagation();
                             onRemoveTag(recipe.id, tag);
                           }}
-                          className="hover:bg-green-200 rounded-full p-0.5 ml-1"
+                          className="hover:bg-green-200 p-0.5 ml-1"
                           title={`Remove ${tag} tag`}
                         >
                           <X className="w-3 h-3" />
