@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 interface TagInputProps {
   tags: string[];
@@ -10,17 +9,23 @@ interface TagInputProps {
   placeholder?: string;
 }
 
-export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add tags..." }: TagInputProps) {
-  const [inputValue, setInputValue] = useState("");
+export function TagInput({
+  tags,
+  availableTags,
+  onTagsChange,
+  placeholder = 'Add tags...',
+}: TagInputProps) {
+  const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filteredSuggestions = availableTags
-    .filter(tag => 
-      tag.toLowerCase().includes(inputValue.toLowerCase()) && 
-      !tags.includes(tag) && 
-      inputValue.length > 0
+    .filter(
+      (tag) =>
+        tag.toLowerCase().includes(inputValue.toLowerCase()) &&
+        !tags.includes(tag) &&
+        inputValue.length > 0,
     )
     .slice(0, 5);
 
@@ -28,32 +33,35 @@ export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add
     if (tag.trim() && !tags.includes(tag.trim())) {
       onTagsChange([...tags, tag.trim()]);
     }
-    setInputValue("");
+    setInputValue('');
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
   };
 
   const removeTag = (tagToRemove: string) => {
-    onTagsChange(tags.filter(tag => tag !== tagToRemove));
+    onTagsChange(tags.filter((tag) => tag !== tagToRemove));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedSuggestionIndex >= 0 && filteredSuggestions[selectedSuggestionIndex]) {
+      if (
+        selectedSuggestionIndex >= 0 &&
+        filteredSuggestions[selectedSuggestionIndex]
+      ) {
         addTag(filteredSuggestions[selectedSuggestionIndex]);
       } else if (inputValue.trim()) {
         addTag(inputValue.trim());
       }
-    } else if (e.key === "ArrowDown") {
+    } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedSuggestionIndex(prev => 
-        prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+      setSelectedSuggestionIndex((prev) =>
+        prev < filteredSuggestions.length - 1 ? prev + 1 : prev,
       );
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
-    } else if (e.key === "Escape") {
+      setSelectedSuggestionIndex((prev) => (prev > 0 ? prev - 1 : -1));
+    } else if (e.key === 'Escape') {
       setShowSuggestions(false);
       setSelectedSuggestionIndex(-1);
     }
@@ -66,7 +74,7 @@ export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add
       setShowSuggestions(false);
     }
     setSelectedSuggestionIndex(-1);
-  }, [inputValue, filteredSuggestions.length, availableTags]);
+  }, [inputValue, filteredSuggestions.length]);
 
   return (
     <div className="space-y-2">
@@ -88,7 +96,7 @@ export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add
           </span>
         ))}
       </div>
-      
+
       <div className="relative">
         <Input
           ref={inputRef}
@@ -99,7 +107,7 @@ export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add
           placeholder={placeholder}
           className="w-full"
         />
-        
+
         {showSuggestions && filteredSuggestions.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
             {filteredSuggestions.map((suggestion, index) => (
@@ -107,7 +115,7 @@ export function TagInput({ tags, availableTags, onTagsChange, placeholder = "Add
                 key={suggestion}
                 type="button"
                 className={`w-full text-left px-3 py-2 hover:bg-gray-100 ${
-                  index === selectedSuggestionIndex ? "bg-blue-100" : ""
+                  index === selectedSuggestionIndex ? 'bg-blue-100' : ''
                 }`}
                 onClick={() => addTag(suggestion)}
               >

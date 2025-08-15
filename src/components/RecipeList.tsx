@@ -1,8 +1,8 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { X } from "lucide-react";
-import type { Recipe } from "@/types/recipe";
+import { X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import type { Recipe } from '@/types/recipe';
 
 interface RecipeListProps {
   recipes: Recipe[];
@@ -10,7 +10,11 @@ interface RecipeListProps {
   onRemoveTag?: (recipeId: string | number, tagToRemove: string) => void;
 }
 
-export function RecipeList({ recipes, onDeleteRecipe, onRemoveTag }: RecipeListProps) {
+export function RecipeList({
+  recipes,
+  onDeleteRecipe,
+  onRemoveTag,
+}: RecipeListProps) {
   if (recipes.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -25,20 +29,20 @@ export function RecipeList({ recipes, onDeleteRecipe, onRemoveTag }: RecipeListP
         <Card key={recipe.id} className="hover:shadow-md transition-shadow">
           <CardContent className="pt-4">
             <div className="flex justify-between items-start">
-              <Link 
+              <Link
                 to={`/recipe/${recipe.id}`}
                 className="flex-1 cursor-pointer hover:bg-gray-50 -m-4 p-4 rounded-lg transition-colors"
               >
                 <h3 className="text-lg font-semibold mb-2 text-blue-700 hover:text-blue-900">
                   {recipe.name}
                 </h3>
-                
+
                 {recipe.page && (
                   <p className="text-sm text-gray-600 mb-2 font-medium">
                     📖 {recipe.page}
                   </p>
                 )}
-                
+
                 <div className="flex flex-wrap gap-2 mb-3">
                   {recipe.tags.map((tag) => (
                     <span
@@ -63,12 +67,12 @@ export function RecipeList({ recipes, onDeleteRecipe, onRemoveTag }: RecipeListP
                     </span>
                   ))}
                 </div>
-                
+
                 <p className="text-sm text-gray-500">
                   Added {recipe.createdAt.toLocaleDateString()}
                 </p>
               </Link>
-              
+
               <Button
                 variant="destructive"
                 size="sm"

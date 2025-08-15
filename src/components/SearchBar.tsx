@@ -1,6 +1,6 @@
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { TagInput } from "@/components/TagInput";
+import { TagInput } from '@/components/TagInput';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface SearchBarProps {
   searchTerm: string;
@@ -10,12 +10,12 @@ interface SearchBarProps {
   onSelectedTagsChange: (tags: string[]) => void;
 }
 
-export function SearchBar({ 
-  searchTerm, 
-  selectedTags, 
-  availableTags, 
-  onSearchTermChange, 
-  onSelectedTagsChange 
+export function SearchBar({
+  searchTerm,
+  selectedTags,
+  availableTags,
+  onSearchTermChange,
+  onSelectedTagsChange,
 }: SearchBarProps) {
   return (
     <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
@@ -30,7 +30,7 @@ export function SearchBar({
           className="mt-1"
         />
       </div>
-      
+
       <div>
         <Label>Filter by Tags</Label>
         <div className="mt-1">

@@ -1,7 +1,7 @@
-import { serve } from "bun";
-import { Database } from "bun:sqlite";
-import type { Recipe } from "@/types/recipe";
-import index from "./index.html";
+import { Database } from 'bun:sqlite';
+import { serve } from 'bun';
+import type { Recipe } from '@/types/recipe';
+import index from './index.html';
 
 type FileWithHeaders = {
   path: string;
@@ -9,12 +9,12 @@ type FileWithHeaders = {
 };
 
 let indexFile: FileWithHeaders | undefined;
-let otherFiles: Record<string, FileWithHeaders> = {};
+const otherFiles: Record<string, FileWithHeaders> = {};
 if (index?.files) {
   for (const file of index.files) {
-    const p = file.path.split("/").pop() || "";
-    if (!p ||  /index-.+\.html$/.test(file.path)) {
-      continue
+    const p = file.path.split('/').pop() || '';
+    if (!p || /index-.+\.html$/.test(file.path)) {
+      continue;
     }
     otherFiles[p] = file;
   }
@@ -22,7 +22,7 @@ if (index?.files) {
 }
 
 // Database setup
-const db = new Database("recipes.db");
+const db = new Database('recipes.db');
 
 // Create schema with integer primary keys
 db.exec(`
@@ -52,10 +52,77 @@ db.exec(`
 `);
 
 // Recipe database operations
-class RecipeDB {
-  static getAllRecipes(): Recipe[] {
+const RecipeDB = {
+  addRecipe(recipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe {
+    const createdAt = new Date();
+
+    // Insert recipe
+    const recipeQuery = db.query(
+      'INSERT INTO recipes (name, page, created_at) VALUES (?, ?, ?) RETURNING id',
+    );
+    const result = recipeQuery.get(
+      recipe.name,
+      recipe.page || null,
+      createdAt.toISOString(),
+    ) as any;
+    const recipeId = result.id;
+
+    // Handle tags
+    for (const tagName of recipe.tags) {
+      // Insert tag if it doesn't exist (or get existing one)
+      const insertTagQuery = db.query(
+        'INSERT OR IGNORE INTO tags (name) VALUES (?)',
+      );
+      insertTagQuery.run(tagName);
+
+      // Get tag ID
+      const getTagQuery = db.query('SELECT id FROM tags WHERE name = ?');
+      const tag = getTagQuery.get(tagName) as any;
+
+      // Link recipe to tag
+      const linkQuery = db.query(
+        'INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (?, ?)',
+      );
+      linkQuery.run(recipeId, tag.id);
+    }
+
+    return {
+      createdAt,
+      id: recipeId,
+      name: recipe.name,
+      page: recipe.page,
+      tags: recipe.tags,
+    };
+  },
+
+  cleanupOrphanedTags(): void {
+    // First, remove recipe_tags entries that reference non-existent recipes
+    const deleteOrphanedAssociationsQuery = db.query(`
+      DELETE FROM recipe_tags 
+      WHERE recipe_id NOT IN (
+        SELECT id FROM recipes
+      )
+    `);
+    deleteOrphanedAssociationsQuery.run();
+
+    // Then, remove tags that have no recipe associations
+    const deleteOrphanedTagsQuery = db.query(`
+      DELETE FROM tags 
+      WHERE id NOT IN (
+        SELECT DISTINCT tag_id FROM recipe_tags
+      )
+    `);
+    deleteOrphanedTagsQuery.run();
+  },
+
+  deleteRecipe(id: string | number): void {
+    const query = db.query('DELETE FROM recipes WHERE id = ?');
+    query.run(parseInt(id.toString(), 10));
+    this.cleanupOrphanedTags();
+  },
+  getAllRecipes(): Recipe[] {
     const recipesQuery = db.query(
-      "SELECT * FROM recipes ORDER BY created_at DESC"
+      'SELECT * FROM recipes ORDER BY created_at DESC',
     );
     const recipes = recipesQuery.all() as any[];
 
@@ -69,63 +136,63 @@ class RecipeDB {
       const tags = tagsQuery.all(recipe.id) as any[];
 
       return {
+        createdAt: new Date(recipe.created_at),
         id: recipe.id,
         name: recipe.name,
         page: recipe.page || undefined,
         tags: tags.map((tag) => tag.name),
-        createdAt: new Date(recipe.created_at),
       };
     });
-  }
+  },
 
-  static addRecipe(recipe: Omit<Recipe, "id" | "createdAt">): Recipe {
-    const createdAt = new Date();
+  getAllTags(): string[] {
+    const query = db.query('SELECT name FROM tags ORDER BY name');
+    const rows = query.all() as any[];
+    return rows.map((row) => row.name);
+  },
 
-    // Insert recipe
-    const recipeQuery = db.query(
-      "INSERT INTO recipes (name, page, created_at) VALUES (?, ?, ?) RETURNING id"
-    );
-    const result = recipeQuery.get(
-      recipe.name,
-      recipe.page || null,
-      createdAt.toISOString()
-    ) as any;
-    const recipeId = result.id;
+  getRecipeById(id: string | number): Recipe | null {
+    const recipeId = parseInt(id.toString(), 10);
+    const recipeQuery = db.query('SELECT * FROM recipes WHERE id = ?');
+    const recipe = recipeQuery.get(recipeId) as any;
 
-    // Handle tags
-    for (const tagName of recipe.tags) {
-      // Insert tag if it doesn't exist (or get existing one)
-      const insertTagQuery = db.query(
-        "INSERT OR IGNORE INTO tags (name) VALUES (?)"
-      );
-      insertTagQuery.run(tagName);
+    if (!recipe) return null;
 
-      // Get tag ID
-      const getTagQuery = db.query("SELECT id FROM tags WHERE name = ?");
-      const tag = getTagQuery.get(tagName) as any;
-
-      // Link recipe to tag
-      const linkQuery = db.query(
-        "INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (?, ?)"
-      );
-      linkQuery.run(recipeId, tag.id);
-    }
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipeId) as any[];
 
     return {
-      id: recipeId,
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
       name: recipe.name,
-      page: recipe.page,
-      tags: recipe.tags,
-      createdAt,
+      page: recipe.page || undefined,
+      tags: tags.map((tag) => tag.name),
     };
-  }
+  },
 
-  static searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
+  getTagsWithCounts(): Array<{ name: string; count: number }> {
+    const query = db.query(`
+      SELECT t.name, COUNT(rt.recipe_id) as count
+      FROM tags t
+      LEFT JOIN recipe_tags rt ON t.id = rt.tag_id
+      GROUP BY t.id, t.name
+      ORDER BY count DESC, t.name ASC
+    `);
+    const rows = query.all() as any[];
+    return rows.map((row) => ({ count: row.count, name: row.name }));
+  },
+
+  searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
     let recipes: any[] = [];
 
     if (selectedTags.length > 0) {
       // Find recipes that have ALL selected tags
-      const placeholders = selectedTags.map(() => "?").join(", ");
+      const placeholders = selectedTags.map(() => '?').join(', ');
       const sql = `
         SELECT r.* FROM recipes r
         WHERE r.id IN (
@@ -142,7 +209,7 @@ class RecipeDB {
       recipes = query.all(...selectedTags, selectedTags.length) as any[];
     } else {
       // Get all recipes
-      const query = db.query("SELECT * FROM recipes ORDER BY created_at DESC");
+      const query = db.query('SELECT * FROM recipes ORDER BY created_at DESC');
       recipes = query.all() as any[];
     }
 
@@ -163,7 +230,7 @@ class RecipeDB {
         `);
         const tags = tagsQuery.all(recipe.id) as any[];
         return tags.some((tag) =>
-          tag.name.toLowerCase().includes(searchTerm.toLowerCase())
+          tag.name.toLowerCase().includes(searchTerm.toLowerCase()),
         );
       });
     }
@@ -178,31 +245,25 @@ class RecipeDB {
       const tags = tagsQuery.all(recipe.id) as any[];
 
       return {
+        createdAt: new Date(recipe.created_at),
         id: recipe.id,
         name: recipe.name,
         page: recipe.page || undefined,
         tags: tags.map((tag) => tag.name),
-        createdAt: new Date(recipe.created_at),
       };
     });
-  }
+  },
 
-  static getAllTags(): string[] {
-    const query = db.query("SELECT name FROM tags ORDER BY name");
-    const rows = query.all() as any[];
-    return rows.map((row) => row.name);
-  }
-
-  static updateRecipe(
+  updateRecipe(
     id: string | number,
-    updates: { name?: string; page?: string; tags?: string[] }
+    updates: { name?: string; page?: string; tags?: string[] },
   ): Recipe {
-    const recipeId = parseInt(id.toString());
+    const recipeId = parseInt(id.toString(), 10);
 
     // Update recipe name if provided
     if (updates.name !== undefined) {
       const updateNameQuery = db.query(
-        "UPDATE recipes SET name = ? WHERE id = ?"
+        'UPDATE recipes SET name = ? WHERE id = ?',
       );
       updateNameQuery.run(updates.name, recipeId);
     }
@@ -210,7 +271,7 @@ class RecipeDB {
     // Update recipe page if provided
     if (updates.page !== undefined) {
       const updatePageQuery = db.query(
-        "UPDATE recipes SET page = ? WHERE id = ?"
+        'UPDATE recipes SET page = ? WHERE id = ?',
       );
       updatePageQuery.run(updates.page || null, recipeId);
     }
@@ -219,7 +280,7 @@ class RecipeDB {
     if (updates.tags) {
       // Remove all existing tags for this recipe
       const removeTagsQuery = db.query(
-        "DELETE FROM recipe_tags WHERE recipe_id = ?"
+        'DELETE FROM recipe_tags WHERE recipe_id = ?',
       );
       removeTagsQuery.run(recipeId);
 
@@ -227,24 +288,27 @@ class RecipeDB {
       for (const tagName of updates.tags) {
         // Insert tag if it doesn't exist (or get existing one)
         const insertTagQuery = db.query(
-          "INSERT OR IGNORE INTO tags (name) VALUES (?)"
+          'INSERT OR IGNORE INTO tags (name) VALUES (?)',
         );
         insertTagQuery.run(tagName);
 
         // Get tag ID
-        const getTagQuery = db.query("SELECT id FROM tags WHERE name = ?");
+        const getTagQuery = db.query('SELECT id FROM tags WHERE name = ?');
         const tag = getTagQuery.get(tagName) as any;
 
         // Link recipe to tag
         const linkQuery = db.query(
-          "INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (?, ?)"
+          'INSERT INTO recipe_tags (recipe_id, tag_id) VALUES (?, ?)',
         );
         linkQuery.run(recipeId, tag.id);
       }
+
+      // Clean up orphaned tags after tag changes
+      this.cleanupOrphanedTags();
     }
 
     // Return updated recipe
-    const recipeQuery = db.query("SELECT * FROM recipes WHERE id = ?");
+    const recipeQuery = db.query('SELECT * FROM recipes WHERE id = ?');
     const recipe = recipeQuery.get(recipeId) as any;
 
     const tagsQuery = db.query(`
@@ -256,158 +320,29 @@ class RecipeDB {
     const tags = tagsQuery.all(recipeId) as any[];
 
     return {
+      createdAt: new Date(recipe.created_at),
       id: recipe.id,
       name: recipe.name,
       page: recipe.page || undefined,
       tags: tags.map((tag) => tag.name),
-      createdAt: new Date(recipe.created_at),
     };
-  }
-
-  static getRecipeById(id: string | number): Recipe | null {
-    const recipeId = parseInt(id.toString());
-    const recipeQuery = db.query("SELECT * FROM recipes WHERE id = ?");
-    const recipe = recipeQuery.get(recipeId) as any;
-
-    if (!recipe) return null;
-
-    const tagsQuery = db.query(`
-      SELECT t.name 
-      FROM tags t 
-      JOIN recipe_tags rt ON t.id = rt.tag_id 
-      WHERE rt.recipe_id = ?
-    `);
-    const tags = tagsQuery.all(recipeId) as any[];
-
-    return {
-      id: recipe.id,
-      name: recipe.name,
-      page: recipe.page || undefined,
-      tags: tags.map((tag) => tag.name),
-      createdAt: new Date(recipe.created_at),
-    };
-  }
-
-  static deleteRecipe(id: string | number): void {
-    const query = db.query("DELETE FROM recipes WHERE id = ?");
-    query.run(parseInt(id.toString()));
-  }
-}
+  },
+};
 
 const server = serve({
+  development: process.env.NODE_ENV !== 'production' && {
+    // Echo console logs from the browser to the server
+    console: true,
+    // Enable browser hot reloading in development
+    hmr: true,
+  },
   routes: {
-    // API Routes
-    "/api/recipes": {
-      async GET(req) {
-        try {
-          const url = new URL(req.url);
-          const searchTerm = url.searchParams.get("search") || "";
-          const tags = url.searchParams.get("tags");
-          const selectedTags = tags ? JSON.parse(tags) : [];
-
-          const recipes =
-            searchTerm || selectedTags.length > 0
-              ? RecipeDB.searchRecipes(searchTerm, selectedTags)
-              : RecipeDB.getAllRecipes();
-
-          return Response.json(recipes);
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-
-      async POST(req) {
-        try {
-          const recipe = await req.json();
-          const newRecipe = RecipeDB.addRecipe(recipe);
-          return Response.json(newRecipe);
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-    },
-
-    "/api/recipes/:id": {
-      async GET(req) {
-        try {
-          const id = req.params.id;
-          const recipe = RecipeDB.getRecipeById(id);
-          if (recipe) {
-            return Response.json(recipe);
-          } else {
-            return Response.json(
-              { error: "Recipe not found" },
-              { status: 404 }
-            );
-          }
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-
-      async PUT(req) {
-        try {
-          const id = req.params.id;
-          const updates = await req.json();
-          const updatedRecipe = RecipeDB.updateRecipe(id, updates);
-          return Response.json(updatedRecipe);
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-
-      async DELETE(req) {
-        try {
-          const id = req.params.id;
-          RecipeDB.deleteRecipe(id);
-          return Response.json({ success: true });
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-    },
-
-    "/api/tags": {
-      async GET() {
-        try {
-          const tags = RecipeDB.getAllTags();
-          return Response.json(tags);
-        } catch (error) {
-          console.error("API Error:", error);
-          return Response.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-          );
-        }
-      },
-    },
-
     // Serve React app for all other routes
-    "/*": index?.files
+    '/*': index?.files
       ? {
           async GET(req) {
             const url = new URL(req.url);
-            const requestedPath = url.pathname.split("/").pop() || "";
+            const requestedPath = url.pathname.split('/').pop() || '';
 
             if (otherFiles[requestedPath]) {
               return new Response(Bun.file(otherFiles[requestedPath].path), {
@@ -421,18 +356,129 @@ const server = serve({
               });
             }
 
-            return new Response("Not Found", { status: 404 });
+            return new Response('Not Found', { status: 404 });
           },
         }
       : index,
-  },
+    // API Routes
+    '/api/recipes': {
+      async GET(req) {
+        try {
+          const url = new URL(req.url);
+          const searchTerm = url.searchParams.get('search') || '';
+          const tags = url.searchParams.get('tags');
+          const selectedTags = tags ? JSON.parse(tags) : [];
 
-  development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
-    hmr: true,
+          const recipes =
+            searchTerm || selectedTags.length > 0
+              ? RecipeDB.searchRecipes(searchTerm, selectedTags)
+              : RecipeDB.getAllRecipes();
 
-    // Echo console logs from the browser to the server
-    console: true,
+          return Response.json(recipes);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+
+      async POST(req) {
+        try {
+          const recipe = await req.json();
+          const newRecipe = RecipeDB.addRecipe(recipe);
+          return Response.json(newRecipe);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/recipes/:id': {
+      async DELETE(req) {
+        try {
+          const id = req.params.id;
+          RecipeDB.deleteRecipe(id);
+          return Response.json({ success: true });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+      async GET(req) {
+        try {
+          const id = req.params.id;
+          const recipe = RecipeDB.getRecipeById(id);
+          if (recipe) {
+            return Response.json(recipe);
+          } else {
+            return Response.json(
+              { error: 'Recipe not found' },
+              { status: 404 },
+            );
+          }
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+
+      async PUT(req) {
+        try {
+          const id = req.params.id;
+          const updates = await req.json();
+          const updatedRecipe = RecipeDB.updateRecipe(id, updates);
+          return Response.json(updatedRecipe);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/tags': {
+      async GET() {
+        try {
+          const tags = RecipeDB.getAllTags();
+          return Response.json(tags);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/tags/counts': {
+      async GET() {
+        try {
+          const tagsWithCounts = RecipeDB.getTagsWithCounts();
+          return Response.json(tagsWithCounts);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
   },
 });
 
