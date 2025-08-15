@@ -24,7 +24,7 @@
   "private": true,
   "scripts": {
     "build": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --bytecode --outfile recipe_manager",
-    "build-windows": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --bytecode --windows-hide-console --target=bun-windows-x64-modern --outfile recipe_manager.exe",
+    "build-windows": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --windows-hide-console --target=bun-windows-x64-modern --outfile recipe_manager.exe",
     "dev": "bun --hot src/index.tsx",
     "lint": "biome check",
     "lint-fix": "bun run lint -- --write",
