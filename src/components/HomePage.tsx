@@ -15,7 +15,7 @@ export function HomePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
-  const loadRecipes = async () => {
+  const loadRecipes = async (searchTerm: string, selectedTags: string[]) => {
     try {
       const [recipesData, tagsData] = await Promise.all([
         searchTerm || selectedTags.length > 0
@@ -32,13 +32,13 @@ export function HomePage() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipes): suppress dependency loadRecipes
   useEffect(() => {
-    loadRecipes();
+    loadRecipes('', []);
   }, []);
 
   const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
     try {
       await RecipeDB.addRecipe(recipe);
-      loadRecipes();
+      loadRecipes('', []);
     } catch (error) {
       console.error('Failed to add recipe:', error);
     }
@@ -47,7 +47,7 @@ export function HomePage() {
   const handleDeleteRecipe = async (id: string | number) => {
     try {
       await RecipeDB.deleteRecipe(id);
-      loadRecipes();
+      loadRecipes('', []);
     } catch (error) {
       console.error('Failed to delete recipe:', error);
     }
@@ -62,7 +62,7 @@ export function HomePage() {
       if (recipe) {
         const newTags = recipe.tags.filter((tag) => tag !== tagToRemove);
         await RecipeDB.updateRecipe(recipeId, { tags: newTags });
-        loadRecipes();
+        loadRecipes('', []);
       }
     } catch (error) {
       console.error('Failed to remove tag:', error);
@@ -98,11 +98,11 @@ export function HomePage() {
         availableTags={availableTags}
         onSearchTermChange={(t) => {
           setSearchTerm(t);
-          loadRecipes();
+          loadRecipes(t, []);
         }}
         onSelectedTagsChange={(t) => {
           setSelectedTags(t);
-          loadRecipes();
+          loadRecipes('', t);
         }}
       />
 
