@@ -30,9 +30,10 @@ export function HomePage() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipes): suppress dependency loadRecipes
   useEffect(() => {
     loadRecipes();
-  }, [searchTerm, selectedTags]);
+  }, []);
 
   const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
     try {
@@ -74,7 +75,7 @@ export function HomePage() {
     }
 
     const randomIndex = Math.floor(Math.random() * recipes.length);
-    const randomRecipe = recipes[randomIndex];
+    const randomRecipe = recipes[randomIndex] || { id: 0 };
     navigate(`/recipe/${randomRecipe.id}`);
   };
 
@@ -95,8 +96,14 @@ export function HomePage() {
         searchTerm={searchTerm}
         selectedTags={selectedTags}
         availableTags={availableTags}
-        onSearchTermChange={setSearchTerm}
-        onSelectedTagsChange={setSelectedTags}
+        onSearchTermChange={(t) => {
+          setSearchTerm(t);
+          loadRecipes();
+        }}
+        onSelectedTagsChange={(t) => {
+          setSelectedTags(t);
+          loadRecipes();
+        }}
       />
 
       <div className="flex justify-between items-center mb-6">

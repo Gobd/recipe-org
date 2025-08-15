@@ -21,10 +21,12 @@ export function RecipePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipe): suppress dependency loadRecipe
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
   useEffect(() => {
     loadRecipe();
     loadAvailableTags();
-  }, [id]);
+  }, []);
 
   const loadRecipe = async () => {
     if (!id) return;

@@ -2,19 +2,10 @@ import type { Recipe } from '@/types/recipe';
 
 const API_BASE = '/api';
 
-export class RecipeDB {
-  static async getAllRecipes(): Promise<Recipe[]> {
-    const response = await fetch(`${API_BASE}/recipes`);
-    const recipes = await response.json();
-    return recipes.map((recipe: any) => ({
-      ...recipe,
-      createdAt: new Date(recipe.createdAt),
-    }));
-  }
-
-  static async addRecipe(
+export const RecipeDB = {
+  addRecipe: async (
     recipe: Omit<Recipe, 'id' | 'createdAt'>,
-  ): Promise<Recipe> {
+  ): Promise<Recipe> => {
     const response = await fetch(`${API_BASE}/recipes`, {
       body: JSON.stringify(recipe),
       headers: { 'Content-Type': 'application/json' },
@@ -25,12 +16,43 @@ export class RecipeDB {
       ...newRecipe,
       createdAt: new Date(newRecipe.createdAt),
     };
-  }
+  },
 
-  static async searchRecipes(
+  async deleteRecipe(id: string | number): Promise<void> {
+    await fetch(`${API_BASE}/recipes/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  getAllRecipes: async (): Promise<Recipe[]> => {
+    const response = await fetch(`${API_BASE}/recipes`);
+    const recipes = await response.json();
+    return recipes.map((recipe: any) => ({
+      ...recipe,
+      createdAt: new Date(recipe.createdAt),
+    }));
+  },
+
+  getAllTags: async (): Promise<string[]> => {
+    const response = await fetch(`${API_BASE}/tags`);
+    return response.json();
+  },
+
+  getRecipeById: async (id: string | number): Promise<Recipe | null> => {
+    const response = await fetch(`${API_BASE}/recipes/${id}`);
+    if (response.status === 404) {
+      return null;
+    }
+    const recipe = await response.json();
+    return {
+      ...recipe,
+      createdAt: new Date(recipe.createdAt),
+    };
+  },
+
+  searchRecipes: async (
     searchTerm: string,
     selectedTags: string[],
-  ): Promise<Recipe[]> {
+  ): Promise<Recipe[]> => {
     const params = new URLSearchParams();
     if (searchTerm) params.set('search', searchTerm);
     if (selectedTags.length > 0)
@@ -42,26 +64,9 @@ export class RecipeDB {
       ...recipe,
       createdAt: new Date(recipe.createdAt),
     }));
-  }
+  },
 
-  static async getAllTags(): Promise<string[]> {
-    const response = await fetch(`${API_BASE}/tags`);
-    return response.json();
-  }
-
-  static async getRecipeById(id: string | number): Promise<Recipe | null> {
-    const response = await fetch(`${API_BASE}/recipes/${id}`);
-    if (response.status === 404) {
-      return null;
-    }
-    const recipe = await response.json();
-    return {
-      ...recipe,
-      createdAt: new Date(recipe.createdAt),
-    };
-  }
-
-  static async updateRecipe(
+  async updateRecipe(
     id: string | number,
     updates: { name?: string; page?: string; tags?: string[] },
   ): Promise<Recipe> {
@@ -75,11 +80,5 @@ export class RecipeDB {
       ...recipe,
       createdAt: new Date(recipe.createdAt),
     };
-  }
-
-  static async deleteRecipe(id: string | number): Promise<void> {
-    await fetch(`${API_BASE}/recipes/${id}`, {
-      method: 'DELETE',
-    });
-  }
-}
+  },
+};

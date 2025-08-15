@@ -52,33 +52,8 @@ db.exec(`
 `);
 
 // Recipe database operations
-class RecipeDB {
-  static getAllRecipes(): Recipe[] {
-    const recipesQuery = db.query(
-      'SELECT * FROM recipes ORDER BY created_at DESC',
-    );
-    const recipes = recipesQuery.all() as any[];
-
-    return recipes.map((recipe) => {
-      const tagsQuery = db.query(`
-        SELECT t.name 
-        FROM tags t 
-        JOIN recipe_tags rt ON t.id = rt.tag_id 
-        WHERE rt.recipe_id = ?
-      `);
-      const tags = tagsQuery.all(recipe.id) as any[];
-
-      return {
-        createdAt: new Date(recipe.created_at),
-        id: recipe.id,
-        name: recipe.name,
-        page: recipe.page || undefined,
-        tags: tags.map((tag) => tag.name),
-      };
-    });
-  }
-
-  static addRecipe(recipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe {
+const RecipeDB = {
+  addRecipe(recipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe {
     const createdAt = new Date();
 
     // Insert recipe
@@ -118,9 +93,68 @@ class RecipeDB {
       page: recipe.page,
       tags: recipe.tags,
     };
-  }
+  },
 
-  static searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
+  deleteRecipe(id: string | number): void {
+    const query = db.query('DELETE FROM recipes WHERE id = ?');
+    query.run(parseInt(id.toString(), 10));
+  },
+  getAllRecipes(): Recipe[] {
+    const recipesQuery = db.query(
+      'SELECT * FROM recipes ORDER BY created_at DESC',
+    );
+    const recipes = recipesQuery.all() as any[];
+
+    return recipes.map((recipe) => {
+      const tagsQuery = db.query(`
+        SELECT t.name 
+        FROM tags t 
+        JOIN recipe_tags rt ON t.id = rt.tag_id 
+        WHERE rt.recipe_id = ?
+      `);
+      const tags = tagsQuery.all(recipe.id) as any[];
+
+      return {
+        createdAt: new Date(recipe.created_at),
+        id: recipe.id,
+        name: recipe.name,
+        page: recipe.page || undefined,
+        tags: tags.map((tag) => tag.name),
+      };
+    });
+  },
+
+  getAllTags(): string[] {
+    const query = db.query('SELECT name FROM tags ORDER BY name');
+    const rows = query.all() as any[];
+    return rows.map((row) => row.name);
+  },
+
+  getRecipeById(id: string | number): Recipe | null {
+    const recipeId = parseInt(id.toString(), 10);
+    const recipeQuery = db.query('SELECT * FROM recipes WHERE id = ?');
+    const recipe = recipeQuery.get(recipeId) as any;
+
+    if (!recipe) return null;
+
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipeId) as any[];
+
+    return {
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
+      name: recipe.name,
+      page: recipe.page || undefined,
+      tags: tags.map((tag) => tag.name),
+    };
+  },
+
+  searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
     let recipes: any[] = [];
 
     if (selectedTags.length > 0) {
@@ -185,19 +219,13 @@ class RecipeDB {
         tags: tags.map((tag) => tag.name),
       };
     });
-  }
+  },
 
-  static getAllTags(): string[] {
-    const query = db.query('SELECT name FROM tags ORDER BY name');
-    const rows = query.all() as any[];
-    return rows.map((row) => row.name);
-  }
-
-  static updateRecipe(
+  updateRecipe(
     id: string | number,
     updates: { name?: string; page?: string; tags?: string[] },
   ): Recipe {
-    const recipeId = parseInt(id.toString());
+    const recipeId = parseInt(id.toString(), 10);
 
     // Update recipe name if provided
     if (updates.name !== undefined) {
@@ -262,37 +290,8 @@ class RecipeDB {
       page: recipe.page || undefined,
       tags: tags.map((tag) => tag.name),
     };
-  }
-
-  static getRecipeById(id: string | number): Recipe | null {
-    const recipeId = parseInt(id.toString());
-    const recipeQuery = db.query('SELECT * FROM recipes WHERE id = ?');
-    const recipe = recipeQuery.get(recipeId) as any;
-
-    if (!recipe) return null;
-
-    const tagsQuery = db.query(`
-      SELECT t.name 
-      FROM tags t 
-      JOIN recipe_tags rt ON t.id = rt.tag_id 
-      WHERE rt.recipe_id = ?
-    `);
-    const tags = tagsQuery.all(recipeId) as any[];
-
-    return {
-      createdAt: new Date(recipe.created_at),
-      id: recipe.id,
-      name: recipe.name,
-      page: recipe.page || undefined,
-      tags: tags.map((tag) => tag.name),
-    };
-  }
-
-  static deleteRecipe(id: string | number): void {
-    const query = db.query('DELETE FROM recipes WHERE id = ?');
-    query.run(parseInt(id.toString()));
-  }
-}
+  },
+};
 
 const server = serve({
   development: process.env.NODE_ENV !== 'production' && {

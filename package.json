@@ -18,7 +18,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "typescript": "~5.9.2"
   },
   "name": "bun-react-template",
   "private": true,
@@ -26,7 +27,8 @@
     "build": "bun run build.ts && bun build ./dist/index.tsx --compile --outfile recipe_manager",
     "dev": "bun --hot src/index.tsx",
     "lint": "biome check",
-    "lint-fix": "bun run lint -- --write"
+    "lint-fix": "bun run lint -- --write",
+    "ts-check": "tsc -p ."
   },
   "type": "module",
   "version": "0.1.0"

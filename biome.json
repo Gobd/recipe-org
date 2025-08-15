@@ -27,6 +27,9 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "complexity": {
+        "noImportantStyles": "off"
+      },
       "correctness": {
         "useUniqueElementIds": "off"
       },

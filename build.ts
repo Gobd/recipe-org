@@ -125,7 +125,7 @@ const copyFiles = async (
       const destDirPath = path.dirname(destPath);
 
       // Ensure destination directory exists
-      await Bun.write(destDirPath + '/.keep', '');
+      await Bun.write(path.join(destDirPath, '.keep'), '');
       await rm(path.join(destDirPath, '.keep'), { force: true });
 
       // Copy file

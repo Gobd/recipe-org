@@ -74,7 +74,7 @@ export function TagInput({
       setShowSuggestions(false);
     }
     setSelectedSuggestionIndex(-1);
-  }, [inputValue, filteredSuggestions.length, availableTags]);
+  }, [inputValue, filteredSuggestions.length]);
 
   return (
     <div className="space-y-2">
