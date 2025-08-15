@@ -24,7 +24,8 @@
   "name": "bun-react-template",
   "private": true,
   "scripts": {
-    "build": "bun run build.ts && bun build ./dist/index.tsx --compile --outfile recipe_manager",
+    "build": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --bytecode --outfile recipe_manager",
+    "build-windows": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --bytecode --target=bun-windows-x64-modern --outfile recipe_manager.exe",
     "dev": "bun --hot src/index.tsx",
     "lint": "biome check",
     "lint-fix": "bun run lint -- --write",
