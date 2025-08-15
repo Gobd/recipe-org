@@ -95,9 +95,20 @@ const RecipeDB = {
     };
   },
 
+  cleanupOrphanedTags(): void {
+    const deleteOrphanedTagsQuery = db.query(`
+      DELETE FROM tags 
+      WHERE id NOT IN (
+        SELECT DISTINCT tag_id FROM recipe_tags
+      )
+    `);
+    deleteOrphanedTagsQuery.run();
+  },
+
   deleteRecipe(id: string | number): void {
     const query = db.query('DELETE FROM recipes WHERE id = ?');
     query.run(parseInt(id.toString(), 10));
+    this.cleanupOrphanedTags();
   },
   getAllRecipes(): Recipe[] {
     const recipesQuery = db.query(
@@ -269,6 +280,9 @@ const RecipeDB = {
         );
         linkQuery.run(recipeId, tag.id);
       }
+
+      // Clean up orphaned tags after tag changes
+      this.cleanupOrphanedTags();
     }
 
     // Return updated recipe
