@@ -62,6 +62,11 @@ if (existsSync('./recipe_manager')) {
   await rm('./recipe_manager', { force: true, recursive: true });
 }
 
+if (existsSync('./recipe_manager.exe')) {
+  console.log(`🗑️ Cleaning previous build at ./recipe_manager.exe`);
+  await rm('./recipe_manager.exe', { force: true, recursive: true });
+}
+
 const start = performance.now();
 
 const entrypoints = [...new Bun.Glob('**.html').scanSync('src')]
@@ -71,8 +76,6 @@ console.log(
   `📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? 'file' : 'files'} to process`,
 );
 
-// Copy TSX and SVG files
-console.log(`📁 Copying TSX and SVG files...`);
 const copiedFiles = await copyFiles(
   ['**/*.tsx', '**/*.ts', '**/*.svg'],
   'src',
