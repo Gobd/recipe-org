@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StarRating } from '@/components/ui/star-rating';
 import { RecipeDB } from '@/lib/database';
 import type { Recipe } from '@/types/recipe';
 
@@ -15,6 +16,10 @@ export function RecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
+  const [recipeNotes, setRecipeNotes] = useState('');
+  const [recipeRating, setRecipeRating] = useState<number | undefined>(
+    undefined,
+  );
   const [tags, setTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +43,8 @@ export function RecipePage() {
         setRecipe(recipeData);
         setRecipeName(recipeData.name);
         setRecipePage(recipeData.page || '');
+        setRecipeNotes(recipeData.notes || '');
+        setRecipeRating(recipeData.rating);
         setTags(recipeData.tags);
       } else {
         setError('Recipe not found');
@@ -64,12 +71,17 @@ export function RecipePage() {
 
     const hasNameChanges = recipeName !== recipe.name;
     const hasPageChanges = recipePage !== (recipe.page || '');
+    const hasNotesChanges = recipeNotes !== (recipe.notes || '');
 
-    if (!hasNameChanges && !hasPageChanges) return;
+    if (!hasNameChanges && !hasPageChanges && !hasNotesChanges) return;
 
     try {
       setSaving(true);
-      const updates: { name?: string; page?: string } = {};
+      const updates: {
+        name?: string;
+        page?: string;
+        notes?: string;
+      } = {};
 
       if (hasNameChanges) {
         updates.name = recipeName;
@@ -77,6 +89,10 @@ export function RecipePage() {
 
       if (hasPageChanges) {
         updates.page = recipePage;
+      }
+
+      if (hasNotesChanges) {
+        updates.notes = recipeNotes;
       }
 
       const updatedRecipe = await RecipeDB.updateRecipe(id, updates);
@@ -104,6 +120,23 @@ export function RecipePage() {
     } catch (error) {
       console.error('Failed to save tags:', error);
       setError('Failed to save tags');
+    }
+  };
+
+  const handleRatingChange = async (newRating: number) => {
+    if (!id || !recipe) return;
+
+    setRecipeRating(newRating);
+
+    // Auto-save rating immediately
+    try {
+      const updatedRecipe = await RecipeDB.updateRecipe(id, {
+        rating: newRating,
+      });
+      setRecipe(updatedRecipe);
+    } catch (error) {
+      console.error('Failed to save rating:', error);
+      setError('Failed to save rating');
     }
   };
 
@@ -143,7 +176,9 @@ export function RecipePage() {
   }
 
   const hasChanges =
-    recipeName !== recipe.name || recipePage !== (recipe.page || '');
+    recipeName !== recipe.name ||
+    recipePage !== (recipe.page || '') ||
+    recipeNotes !== (recipe.notes || '');
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
@@ -213,6 +248,29 @@ export function RecipePage() {
                 placeholder="Enter page reference..."
                 className="mt-1"
               />
+            </div>
+
+            <div>
+              <Label htmlFor="recipe-notes">Notes</Label>
+              <textarea
+                id="recipe-notes"
+                value={recipeNotes}
+                onChange={(e) => setRecipeNotes(e.target.value)}
+                placeholder="Add your notes about this recipe..."
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={4}
+              />
+            </div>
+
+            <div>
+              <Label>Rating (auto-saved)</Label>
+              <div className="mt-2">
+                <StarRating
+                  rating={recipeRating}
+                  onRatingChange={handleRatingChange}
+                  size="md"
+                />
+              </div>
             </div>
 
             <div>

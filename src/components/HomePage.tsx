@@ -90,6 +90,18 @@ export function HomePage() {
     }
   };
 
+  const handleRatingChange = async (
+    recipeId: string | number,
+    rating: number,
+  ) => {
+    try {
+      await RecipeDB.updateRecipe(recipeId, { rating });
+      loadRecipes(searchTerm, selectedTags);
+    } catch (error) {
+      console.error('Failed to update rating:', error);
+    }
+  };
+
   const handleRandomRecipe = () => {
     if (recipes.length === 0) {
       return; // No recipes to select from
@@ -149,6 +161,7 @@ export function HomePage() {
         recipes={recipes}
         onDeleteRecipe={handleDeleteRecipe}
         onRemoveTag={handleRemoveTag}
+        onRatingChange={handleRatingChange}
       />
     </div>
   );

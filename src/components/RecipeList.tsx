@@ -2,18 +2,21 @@ import { X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { StarRating } from '@/components/ui/star-rating';
 import type { Recipe } from '@/types/recipe';
 
 interface RecipeListProps {
   recipes: Recipe[];
   onDeleteRecipe: (id: string | number) => void;
   onRemoveTag?: (recipeId: string | number, tagToRemove: string) => void;
+  onRatingChange?: (recipeId: string | number, rating: number) => void;
 }
 
 export function RecipeList({
   recipes,
   onDeleteRecipe,
   onRemoveTag,
+  onRatingChange,
 }: RecipeListProps) {
   if (recipes.length === 0) {
     return (
@@ -66,6 +69,20 @@ export function RecipeList({
                       )}
                     </span>
                   ))}
+                </div>
+
+                <div className="mb-3">
+                  <StarRating
+                    rating={recipe.rating}
+                    onRatingChange={
+                      onRatingChange
+                        ? (rating) => {
+                            onRatingChange(recipe.id, rating);
+                          }
+                        : undefined
+                    }
+                    size="sm"
+                  />
                 </div>
 
                 <p className="text-sm text-gray-500">
