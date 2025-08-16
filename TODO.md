@@ -1,2 +1,1 @@
- - generate dewey decimal number automatically
- - add csv upload
+ - add csv upload for recipes, include name, location, rating

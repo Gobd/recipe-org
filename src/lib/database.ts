@@ -1,8 +1,18 @@
-import type { Recipe } from '@/types/recipe';
+import type { DeweyCategory, Recipe } from '@/types/recipe';
 
 const API_BASE = '/api';
 
 export const RecipeDB = {
+  async addDeweyCategory(
+    category: Omit<DeweyCategory, 'id'>,
+  ): Promise<DeweyCategory> {
+    const response = await fetch(`${API_BASE}/dewey`, {
+      body: JSON.stringify(category),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    });
+    return response.json();
+  },
   addRecipe: async (
     recipe: Omit<Recipe, 'id' | 'createdAt'>,
   ): Promise<Recipe> => {
@@ -16,6 +26,12 @@ export const RecipeDB = {
       ...newRecipe,
       createdAt: new Date(newRecipe.createdAt),
     };
+  },
+
+  async deleteDeweyCategory(id: number): Promise<void> {
+    await fetch(`${API_BASE}/dewey/${id}`, {
+      method: 'DELETE',
+    });
   },
 
   async deleteFile(fileId: number): Promise<void> {
@@ -55,6 +71,12 @@ export const RecipeDB = {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   },
+
+  // Dewey Category operations
+  async getAllDeweyCategories(): Promise<DeweyCategory[]> {
+    const response = await fetch(`${API_BASE}/dewey`);
+    return response.json();
+  },
   getAllRecipes: async (): Promise<Recipe[]> => {
     const response = await fetch(`${API_BASE}/recipes`);
     const recipes = await response.json();
@@ -67,6 +89,14 @@ export const RecipeDB = {
   getAllTags: async (): Promise<string[]> => {
     const response = await fetch(`${API_BASE}/tags`);
     return response.json();
+  },
+
+  async getNextDeweySequence(baseCode: string): Promise<string> {
+    const response = await fetch(
+      `${API_BASE}/dewey/next-sequence/${encodeURIComponent(baseCode)}`,
+    );
+    const data = await response.json();
+    return data.nextSequence;
   },
 
   getNextRecipe: async (currentId: string | number): Promise<Recipe | null> => {
@@ -103,6 +133,17 @@ export const RecipeDB = {
     };
   },
 
+  getRecipesByDeweyCode: async (deweyCode: string): Promise<Recipe[]> => {
+    const response = await fetch(
+      `${API_BASE}/recipes/dewey/${encodeURIComponent(deweyCode)}`,
+    );
+    const recipes = await response.json();
+    return recipes.map((recipe: any) => ({
+      ...recipe,
+      createdAt: new Date(recipe.createdAt),
+    }));
+  },
+
   getTagsWithCounts: async (): Promise<
     Array<{ name: string; count: number }>
   > => {
@@ -127,6 +168,18 @@ export const RecipeDB = {
     }));
   },
 
+  async updateDeweyCategory(
+    id: number,
+    updates: Partial<Omit<DeweyCategory, 'id'>>,
+  ): Promise<DeweyCategory> {
+    const response = await fetch(`${API_BASE}/dewey/${id}`, {
+      body: JSON.stringify(updates),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+    });
+    return response.json();
+  },
+
   async updateRecipe(
     id: string | number,
     updates: {
@@ -136,6 +189,7 @@ export const RecipeDB = {
       notes?: string;
       rating?: number;
       tags?: string[];
+      deweyDecimal?: string;
     },
   ): Promise<Recipe> {
     const response = await fetch(`${API_BASE}/recipes/${id}`, {

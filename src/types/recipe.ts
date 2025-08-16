@@ -13,4 +13,14 @@ export interface Recipe {
   createdAt: Date;
   notes?: string;
   rating?: number;
+  deweyDecimal?: string;
+}
+
+export interface DeweyCategory {
+  id: number;
+  deweyCode: string;
+  name: string;
+  level: number;
+  parentCode?: string;
+  isActive: boolean;
 }

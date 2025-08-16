@@ -52,6 +52,80 @@ const server = serve({
         }
       : index,
 
+    '/api/dewey': {
+      async GET() {
+        try {
+          const categories = RecipeDB.getAllDeweyCategories();
+          return Response.json(categories);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+      async POST(req: Bun.BunRequest) {
+        try {
+          const category = await req.json();
+          const newCategory = RecipeDB.addDeweyCategory(category);
+          return Response.json(newCategory);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/dewey/:id': {
+      async DELETE(req: Bun.BunRequest) {
+        try {
+          const id = parseInt((req.params as any).id, 10);
+          RecipeDB.deleteDeweyCategory(id);
+          return Response.json({ success: true });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+      async PUT(req: Bun.BunRequest) {
+        try {
+          const id = parseInt((req.params as any).id, 10);
+          const updates = await req.json();
+          const updatedCategory = RecipeDB.updateDeweyCategory(id, updates);
+          return Response.json(updatedCategory);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/dewey/next-sequence/:baseCode': {
+      async GET(req: Bun.BunRequest) {
+        try {
+          const baseCode = (req.params as any).baseCode;
+          const nextSequence = RecipeDB.getNextDeweySequence(baseCode);
+          return Response.json({ nextSequence });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
     '/api/files/:id': {
       async DELETE(req: Bun.BunRequest) {
         try {
@@ -238,6 +312,22 @@ const server = serve({
           } else {
             return Response.json(null);
           }
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/recipes/dewey/:deweyCode': {
+      async GET(req: Bun.BunRequest) {
+        try {
+          const deweyCode = decodeURIComponent((req.params as any).deweyCode);
+          const recipes = RecipeDB.getRecipesByDeweyCode(deweyCode);
+          return Response.json(recipes);
         } catch (error) {
           console.error('API Error:', error);
           return Response.json(
