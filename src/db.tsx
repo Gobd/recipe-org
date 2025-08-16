@@ -62,6 +62,24 @@ try {
   // Column already exists, ignore error
 }
 
+// Cache for database queries
+const cache = new Map<string, any>();
+
+// Clear specific cache keys
+const clearRecipeCache = (): void => {
+  cache.delete('getAllRecipes');
+  clearTagCache();
+};
+
+const clearTagCache = (): void => {
+  cache.delete('getAllTags');
+  cache.delete('getTagsWithCounts');
+};
+
+const clearDeweyCache = (): void => {
+  cache.delete('getAllDeweyCategories');
+};
+
 // Recipe database operations
 export const RecipeDB = {
   // Dewey Category operations
@@ -76,6 +94,8 @@ export const RecipeDB = {
       category.parentCode || null,
       category.isActive,
     ) as any;
+
+    clearDeweyCache();
 
     return {
       deweyCode: result.dewey_code,
@@ -139,6 +159,8 @@ export const RecipeDB = {
       linkQuery.run(recipeId, tag.id);
     }
 
+    clearRecipeCache();
+
     return {
       createdAt,
       deweyDecimal: recipe.deweyDecimal,
@@ -170,11 +192,13 @@ export const RecipeDB = {
       )
     `);
     deleteOrphanedTagsQuery.run();
+    clearTagCache();
   },
 
   deleteDeweyCategory(id: number): void {
     const query = db.query('DELETE FROM dewey_categories WHERE id = ?');
     query.run(id);
+    clearDeweyCache();
   },
 
   deleteFile(fileId: string | number): void {
@@ -187,15 +211,21 @@ export const RecipeDB = {
     const query = db.query('DELETE FROM recipes WHERE id = ?');
     query.run(parseInt(id.toString(), 10));
     this.cleanupOrphanedTags();
+    clearRecipeCache();
   },
 
   getAllDeweyCategories(): DeweyCategory[] {
+    const cacheKey = 'getAllDeweyCategories';
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+
     const query = db.query(
       'SELECT * FROM dewey_categories ORDER BY dewey_code',
     );
     const categories = query.all() as any[];
 
-    return categories.map((category) => ({
+    const result = categories.map((category) => ({
       deweyCode: category.dewey_code,
       id: category.id,
       isActive: category.is_active,
@@ -203,14 +233,22 @@ export const RecipeDB = {
       name: category.name,
       parentCode: category.parent_code || undefined,
     }));
+
+    cache.set(cacheKey, result);
+    return result;
   },
   getAllRecipes(): Recipe[] {
+    const cacheKey = 'getAllRecipes';
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+
     const recipesQuery = db.query(
       'SELECT * FROM recipes ORDER BY created_at DESC',
     );
     const recipes = recipesQuery.all() as any[];
 
-    return recipes.map((recipe) => {
+    const result = recipes.map((recipe) => {
       const tagsQuery = db.query(`
         SELECT t.name 
         FROM tags t 
@@ -231,44 +269,39 @@ export const RecipeDB = {
         url: recipe.url || undefined,
       };
     });
+
+    cache.set(cacheKey, result);
+    return result;
   },
 
   getAllTags(): string[] {
+    const cacheKey = 'getAllTags';
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+
     const query = db.query('SELECT name FROM tags ORDER BY name');
     const rows = query.all() as any[];
-    return rows.map((row) => row.name);
+    const result = rows.map((row) => row.name);
+
+    cache.set(cacheKey, result);
+    return result;
   },
 
   getDeweyChildCategories(parentCode: string): DeweyCategory[] {
-    const query = db.query(
-      'SELECT * FROM dewey_categories WHERE parent_code = ? AND is_active = 1 ORDER BY dewey_code',
-    );
-    const categories = query.all(parentCode) as any[];
-
-    return categories.map((category) => ({
-      deweyCode: category.dewey_code,
-      id: category.id,
-      isActive: category.is_active,
-      level: category.level,
-      name: category.name,
-      parentCode: category.parent_code || undefined,
-    }));
+    const allCategories = this.getAllDeweyCategories();
+    return allCategories
+      .filter(
+        (category) => category.parentCode === parentCode && category.isActive,
+      )
+      .sort((a, b) => a.deweyCode.localeCompare(b.deweyCode));
   },
 
   getDeweyRootCategories(): DeweyCategory[] {
-    const query = db.query(
-      'SELECT * FROM dewey_categories WHERE parent_code IS NULL AND is_active = 1 ORDER BY dewey_code',
-    );
-    const categories = query.all() as any[];
-
-    return categories.map((category) => ({
-      deweyCode: category.dewey_code,
-      id: category.id,
-      isActive: category.is_active,
-      level: category.level,
-      name: category.name,
-      parentCode: category.parent_code || undefined,
-    }));
+    const allCategories = this.getAllDeweyCategories();
+    return allCategories
+      .filter((category) => !category.parentCode && category.isActive)
+      .sort((a, b) => a.deweyCode.localeCompare(b.deweyCode));
   },
 
   getFileById(
@@ -456,6 +489,11 @@ export const RecipeDB = {
   },
 
   getTagsWithCounts(): Array<{ name: string; count: number }> {
+    const cacheKey = 'getTagsWithCounts';
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+
     const query = db.query(`
       SELECT t.name, COUNT(rt.recipe_id) as count
       FROM tags t
@@ -464,7 +502,10 @@ export const RecipeDB = {
       ORDER BY count DESC, t.name ASC
     `);
     const rows = query.all() as any[];
-    return rows.map((row) => ({ count: row.count, name: row.name }));
+    const result = rows.map((row) => ({ count: row.count, name: row.name }));
+
+    cache.set(cacheKey, result);
+    return result;
   },
 
   searchRecipes(searchTerm: string, selectedTags: string[]): Recipe[] {
@@ -575,6 +616,8 @@ export const RecipeDB = {
 
     const selectQuery = db.query('SELECT * FROM dewey_categories WHERE id = ?');
     const result = selectQuery.get(id) as any;
+
+    clearDeweyCache();
 
     return {
       deweyCode: result.dewey_code,
@@ -690,6 +733,8 @@ export const RecipeDB = {
       WHERE rt.recipe_id = ?
     `);
     const tags = tagsQuery.all(recipeId) as any[];
+
+    clearRecipeCache();
 
     return {
       createdAt: new Date(recipe.created_at),
