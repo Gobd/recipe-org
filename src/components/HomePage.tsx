@@ -1,4 +1,4 @@
-import { Shuffle } from 'lucide-react';
+import { Download, Shuffle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RecipeForm } from '@/components/RecipeForm';
@@ -56,10 +56,17 @@ export function HomePage() {
     }
   }, [searchParams]);
 
-  const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
+  const handleAddRecipe = async (
+    recipe: Omit<Recipe, 'id' | 'createdAt'>,
+    shouldNavigate?: boolean,
+  ) => {
     try {
-      await RecipeDB.addRecipe(recipe);
-      loadRecipes(searchTerm, selectedTags);
+      const newRecipe = await RecipeDB.addRecipe(recipe);
+      if (shouldNavigate) {
+        navigate(`/recipe/${newRecipe.id}`);
+      } else {
+        loadRecipes(searchTerm, selectedTags);
+      }
     } catch (error) {
       console.error('Failed to add recipe:', error);
     }
@@ -112,17 +119,56 @@ export function HomePage() {
     navigate(`/recipe/${randomRecipe.id}`);
   };
 
+  const handleDownloadCSV = async () => {
+    try {
+      // Get all recipes for CSV export
+      const allRecipes = await RecipeDB.getAllRecipes();
+
+      // Create CSV headers
+      const headers = [
+        'ID',
+        'Name',
+        'Page',
+        'URL',
+        'Notes',
+        'Rating',
+        'Tags',
+        'Created Date',
+      ];
+
+      // Convert recipes to CSV rows
+      const csvRows = allRecipes.map((recipe) => [
+        recipe.id,
+        `"${(recipe.name || '').replace(/"/g, '""')}"`, // Escape quotes in name
+        `"${(recipe.page || '').replace(/"/g, '""')}"`, // Escape quotes in page
+        `"${(recipe.url || '').replace(/"/g, '""')}"`, // Escape quotes in url
+        `"${(recipe.notes || '').replace(/"/g, '""')}"`, // Escape quotes in notes
+        recipe.rating || '',
+        `"${recipe.tags.join(', ')}"`, // Comma-separated tags in single column
+        recipe.createdAt.toLocaleDateString(),
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [headers, ...csvRows]
+        .map((row) => row.join(','))
+        .join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `recipes_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Failed to download CSV:', error);
+    }
+  };
+
   return (
     <div className="container mx-auto p-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          Recipe Manager
-        </h1>
-        <p className="text-gray-600">
-          Organize your recipes with tags and search
-        </p>
-      </div>
-
       <RecipeForm availableTags={availableTags} onAddRecipe={handleAddRecipe} />
 
       <SearchBar
@@ -163,6 +209,17 @@ export function HomePage() {
         onRemoveTag={handleRemoveTag}
         onRatingChange={handleRatingChange}
       />
+
+      <div className="mt-8 text-center">
+        <Button
+          onClick={handleDownloadCSV}
+          variant="outline"
+          className="flex items-center gap-2 mx-auto"
+        >
+          <Download className="w-4 h-4" />
+          Download All Recipes (CSV)
+        </Button>
+      </div>
     </div>
   );
 }

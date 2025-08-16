@@ -9,6 +9,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     page TEXT,
+    url TEXT,
     notes TEXT,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -32,18 +33,46 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS recipe_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recipe_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    content BLOB NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+  )
+`);
+
 // Recipe database operations
 export const RecipeDB = {
+  // File operations
+  addFile(
+    recipeId: string | number,
+    filename: string,
+    content: ArrayBuffer,
+  ): { id: number; filename: string } {
+    const id = parseInt(recipeId.toString(), 10);
+    const query = db.query(
+      'INSERT INTO recipe_files (recipe_id, filename, content) VALUES (?, ?, ?) RETURNING id',
+    );
+    const result = query.get(id, filename, new Uint8Array(content)) as any;
+    return {
+      filename: filename,
+      id: result.id,
+    };
+  },
   addRecipe(recipe: Omit<Recipe, 'id' | 'createdAt'>): Recipe {
     const createdAt = new Date();
 
     // Insert recipe
     const recipeQuery = db.query(
-      'INSERT INTO recipes (name, page, notes, rating, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      'INSERT INTO recipes (name, page, url, notes, rating, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
     );
     const result = recipeQuery.get(
       recipe.name,
       recipe.page || null,
+      recipe.url || null,
       recipe.notes || null,
       recipe.rating || null,
       createdAt.toISOString(),
@@ -77,6 +106,7 @@ export const RecipeDB = {
       page: recipe.page,
       rating: recipe.rating,
       tags: recipe.tags,
+      url: recipe.url,
     };
   },
 
@@ -98,6 +128,12 @@ export const RecipeDB = {
       )
     `);
     deleteOrphanedTagsQuery.run();
+  },
+
+  deleteFile(fileId: string | number): void {
+    const id = parseInt(fileId.toString(), 10);
+    const query = db.query('DELETE FROM recipe_files WHERE id = ?');
+    query.run(id);
   },
 
   deleteRecipe(id: string | number): void {
@@ -128,6 +164,7 @@ export const RecipeDB = {
         page: recipe.page || undefined,
         rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
+        url: recipe.url || undefined,
       };
     });
   },
@@ -136,6 +173,105 @@ export const RecipeDB = {
     const query = db.query('SELECT name FROM tags ORDER BY name');
     const rows = query.all() as any[];
     return rows.map((row) => row.name);
+  },
+
+  getFileById(
+    fileId: string | number,
+  ): { filename: string; content: Uint8Array } | null {
+    const id = parseInt(fileId.toString(), 10);
+    const query = db.query(
+      'SELECT filename, content FROM recipe_files WHERE id = ?',
+    );
+    const file = query.get(id) as any;
+    if (!file) return null;
+    return {
+      content: file.content,
+      filename: file.filename,
+    };
+  },
+
+  getFilesByRecipeId(
+    recipeId: string | number,
+  ): Array<{ id: number; filename: string }> {
+    const id = parseInt(recipeId.toString(), 10);
+    const query = db.query(
+      'SELECT id, filename FROM recipe_files WHERE recipe_id = ? ORDER BY created_at DESC',
+    );
+    const files = query.all(id) as any[];
+    return files.map((file) => ({
+      filename: file.filename,
+      id: file.id,
+    }));
+  },
+
+  getNextRecipe(currentId: string | number): Recipe | null {
+    const recipeId = parseInt(currentId.toString(), 10);
+
+    // Get the next recipe (newer) - one with a more recent created_at
+    const recipeQuery = db.query(`
+      SELECT * FROM recipes 
+      WHERE created_at > (
+        SELECT created_at FROM recipes WHERE id = ?
+      )
+      ORDER BY created_at ASC 
+      LIMIT 1
+    `);
+    const recipe = recipeQuery.get(recipeId) as any;
+
+    if (!recipe) return null;
+
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipe.id) as any[];
+
+    return {
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
+      name: recipe.name,
+      notes: recipe.notes || undefined,
+      page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
+      tags: tags.map((tag) => tag.name),
+    };
+  },
+
+  getPreviousRecipe(currentId: string | number): Recipe | null {
+    const recipeId = parseInt(currentId.toString(), 10);
+
+    // Get the previous recipe (older) - one with an earlier created_at
+    const recipeQuery = db.query(`
+      SELECT * FROM recipes 
+      WHERE created_at < (
+        SELECT created_at FROM recipes WHERE id = ?
+      )
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `);
+    const recipe = recipeQuery.get(recipeId) as any;
+
+    if (!recipe) return null;
+
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipe.id) as any[];
+
+    return {
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
+      name: recipe.name,
+      notes: recipe.notes || undefined,
+      page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
+      tags: tags.map((tag) => tag.name),
+    };
   },
 
   getRecipeById(id: string | number): Recipe | null {
@@ -153,14 +289,24 @@ export const RecipeDB = {
     `);
     const tags = tagsQuery.all(recipeId) as any[];
 
+    const filesQuery = db.query(
+      'SELECT id, filename FROM recipe_files WHERE recipe_id = ? ORDER BY created_at DESC',
+    );
+    const files = filesQuery.all(recipeId) as any[];
+
     return {
       createdAt: new Date(recipe.created_at),
+      files: files.map((file) => ({
+        filename: file.filename,
+        id: file.id,
+      })),
       id: recipe.id,
       name: recipe.name,
       notes: recipe.notes || undefined,
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
+      url: recipe.url || undefined,
     };
   },
 
@@ -241,6 +387,7 @@ export const RecipeDB = {
         page: recipe.page || undefined,
         rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
+        url: recipe.url || undefined,
       };
     });
   },
@@ -250,6 +397,7 @@ export const RecipeDB = {
     updates: {
       name?: string;
       page?: string;
+      url?: string;
       notes?: string;
       rating?: number;
       tags?: string[];
@@ -271,6 +419,14 @@ export const RecipeDB = {
         'UPDATE recipes SET page = ? WHERE id = ?',
       );
       updatePageQuery.run(updates.page || null, recipeId);
+    }
+
+    // Update recipe URL if provided
+    if (updates.url !== undefined) {
+      const updateUrlQuery = db.query(
+        'UPDATE recipes SET url = ? WHERE id = ?',
+      );
+      updateUrlQuery.run(updates.url || null, recipeId);
     }
 
     // Update recipe notes if provided
@@ -340,6 +496,7 @@ export const RecipeDB = {
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
+      url: recipe.url || undefined,
     };
   },
 };

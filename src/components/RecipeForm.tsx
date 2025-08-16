@@ -9,7 +9,10 @@ import type { Recipe } from '@/types/recipe';
 
 interface RecipeFormProps {
   availableTags: string[];
-  onAddRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>) => void;
+  onAddRecipe: (
+    recipe: Omit<Recipe, 'id' | 'createdAt'>,
+    shouldNavigate?: boolean,
+  ) => void;
 }
 
 export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
@@ -17,6 +20,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [shouldNavigateToRecipe, setShouldNavigateToRecipe] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +33,11 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
       tags: tags,
     };
 
-    onAddRecipe(newRecipe);
+    onAddRecipe(newRecipe, shouldNavigateToRecipe);
     setRecipeName('');
     setRecipePage('');
     setTags([]);
+    setShouldNavigateToRecipe(false);
   };
 
   return (
@@ -74,6 +79,19 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
                 placeholder="Add tags (press Enter to add)..."
               />
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              id="navigate-checkbox"
+              type="checkbox"
+              checked={shouldNavigateToRecipe}
+              onChange={(e) => setShouldNavigateToRecipe(e.target.checked)}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <Label htmlFor="navigate-checkbox" className="cursor-pointer">
+              Go to recipe page after adding
+            </Label>
           </div>
 
           <div className="space-y-2">
