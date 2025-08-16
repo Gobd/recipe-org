@@ -394,6 +394,7 @@ const server = serve({
           // Skip header line if present
           const dataLines = lines.slice(1);
           let importedCount = 0;
+          let updatedCount = 0;
           const errors: string[] = [];
 
           for (const line of dataLines) {
@@ -409,11 +410,21 @@ const server = serve({
                 continue;
               }
 
-              const [, name, page, url, notes, ratingStr, tagsStr] = fields;
+              const [idStr, name, page, url, notes, ratingStr, tagsStr] =
+                fields;
 
               if (!name?.trim()) {
                 errors.push(`Missing recipe name: ${line.substring(0, 50)}...`);
                 continue;
+              }
+
+              // Parse ID
+              let recipeId = 0;
+              if (idStr?.trim()) {
+                const parsedId = parseInt(idStr.trim(), 10);
+                if (!Number.isNaN(parsedId)) {
+                  recipeId = parsedId;
+                }
               }
 
               // Parse rating
@@ -443,9 +454,17 @@ const server = serve({
                 url: url?.trim() || undefined,
               };
 
-              // Add recipe to database
-              RecipeDB.addRecipe(recipe);
-              importedCount++;
+              const existingRecipe = recipeId
+                ? RecipeDB.getRecipeById(recipeId)
+                : false;
+              if (existingRecipe) {
+                // Update existing recipe
+                RecipeDB.updateRecipe(recipeId, recipe);
+                updatedCount++;
+              } else {
+                RecipeDB.addRecipe(recipe);
+                importedCount++;
+              }
             } catch (error) {
               console.error(`Error importing line: ${line}`, error);
               errors.push(
@@ -459,6 +478,7 @@ const server = serve({
             errors: errors.slice(0, 10), // Return first 10 errors
             importedCount,
             success: true,
+            updatedCount,
           });
         } catch (error) {
           console.error('CSV Upload Error:', error);

@@ -159,7 +159,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
 
       if (
         !confirm(
-          `Upload recipes from "${file.name}"? This will add new recipes to the database.`,
+          `Upload recipes from "${file.name}"? This will add new recipes and update existing ones based on ID matches.`,
         )
       ) {
         return;
@@ -169,7 +169,13 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
         const result = await RecipeDB.uploadCSV(file);
 
         if (result.success) {
-          let message = `Successfully imported ${result.importedCount} recipes!`;
+          let message = `Successfully processed CSV:`;
+          if (result.importedCount > 0) {
+            message += `\n- Imported ${result.importedCount} new recipes`;
+          }
+          if (result.updatedCount > 0) {
+            message += `\n- Updated ${result.updatedCount} existing recipes`;
+          }
 
           if (result.errorCount > 0) {
             message += `\n\nThere were ${result.errorCount} errors during import:`;

@@ -208,6 +208,7 @@ export const RecipeDB = {
   async uploadCSV(file: File): Promise<{
     success: boolean;
     importedCount: number;
+    updatedCount: number;
     errorCount: number;
     errors: string[];
   }> {
