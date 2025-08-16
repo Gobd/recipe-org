@@ -1,3 +1,4 @@
+import { Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DeweyAutoSelector } from '@/components/DeweyAutoSelector';
@@ -145,6 +146,62 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
     setShouldNavigateToRecipe(false);
   };
 
+  const handleUploadCSV = async () => {
+    // Create file input element
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.style.display = 'none';
+
+    fileInput.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      if (
+        !confirm(
+          `Upload recipes from "${file.name}"? This will add new recipes to the database.`,
+        )
+      ) {
+        return;
+      }
+
+      try {
+        const result = await RecipeDB.uploadCSV(file);
+
+        if (result.success) {
+          let message = `Successfully imported ${result.importedCount} recipes!`;
+
+          if (result.errorCount > 0) {
+            message += `\n\nThere were ${result.errorCount} errors during import:`;
+            result.errors.forEach((error, index) => {
+              if (index < 3) {
+                message += `\n- ${error}`;
+              }
+            });
+            if (result.errors.length > 3) {
+              message += `\n... and ${result.errors.length - 3} more errors`;
+            }
+          }
+
+          alert(message);
+
+          // Refresh the page to show new recipes
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Failed to upload CSV:', error);
+        alert(
+          `Failed to upload CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      } finally {
+        document.body.removeChild(fileInput);
+      }
+    };
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+  };
+
   return (
     <Card className="mb-6">
       <CardContent className="pt-6">
@@ -224,6 +281,15 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
                 onClick={() => navigate('/dewey-admin')}
               >
                 Dewey Admin
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUploadCSV}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Upload CSV
               </Button>
             </div>
           </div>

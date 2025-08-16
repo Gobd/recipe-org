@@ -20,6 +20,29 @@ if (index?.files) {
   indexFile = index.files.find((file) => /index-.+\.html$/.test(file.path));
 }
 
+// Helper function to parse CSV line handling quoted fields
+const parseCSVLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current);
+  return result.map((field) => field.replace(/^"|"$/g, '').trim());
+};
+
 const server = serve({
   development: process.env.NODE_ENV !== 'production' && {
     // Echo console logs from the browser to the server
@@ -332,6 +355,115 @@ const server = serve({
           console.error('API Error:', error);
           return Response.json(
             { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/recipes/upload-csv': {
+      async POST(req: Bun.BunRequest) {
+        try {
+          const formData = await req.formData();
+          const file = formData.get('file') as File;
+
+          if (!file) {
+            return Response.json(
+              { error: 'No file provided' },
+              { status: 400 },
+            );
+          }
+
+          if (!file.name.toLowerCase().endsWith('.csv')) {
+            return Response.json(
+              { error: 'File must be a CSV' },
+              { status: 400 },
+            );
+          }
+
+          const text = await file.text();
+          const lines = text.split('\n').filter((line) => line.trim());
+
+          if (lines.length === 0) {
+            return Response.json(
+              { error: 'CSV file is empty' },
+              { status: 400 },
+            );
+          }
+
+          // Skip header line if present
+          const dataLines = lines.slice(1);
+          let importedCount = 0;
+          const errors: string[] = [];
+
+          for (const line of dataLines) {
+            if (!line.trim()) continue;
+
+            try {
+              // Parse CSV line handling quoted fields
+              const fields = parseCSVLine(line);
+
+              // Expected format: ID, Name, Page, URL, Notes, Rating, Tags, Created Date
+              if (fields.length < 7) {
+                errors.push(`Invalid line format: ${line.substring(0, 50)}...`);
+                continue;
+              }
+
+              const [, name, page, url, notes, ratingStr, tagsStr] = fields;
+
+              if (!name?.trim()) {
+                errors.push(`Missing recipe name: ${line.substring(0, 50)}...`);
+                continue;
+              }
+
+              // Parse rating
+              let rating: number | undefined;
+              if (ratingStr?.trim()) {
+                const parsedRating = parseFloat(ratingStr);
+                if (!Number.isNaN(parsedRating)) {
+                  rating = parsedRating;
+                }
+              }
+
+              // Parse tags from comma-separated string
+              const tags = tagsStr
+                ? tagsStr
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter((tag) => tag.length > 0)
+                : [];
+
+              // Create recipe object
+              const recipe = {
+                name: name.trim(),
+                notes: notes?.trim() || undefined,
+                page: page?.trim() || undefined,
+                rating: rating,
+                tags: tags,
+                url: url?.trim() || undefined,
+              };
+
+              // Add recipe to database
+              RecipeDB.addRecipe(recipe);
+              importedCount++;
+            } catch (error) {
+              console.error(`Error importing line: ${line}`, error);
+              errors.push(
+                `Line "${line.substring(0, 50)}...": ${error instanceof Error ? error.message : 'Unknown error'}`,
+              );
+            }
+          }
+
+          return Response.json({
+            errorCount: errors.length,
+            errors: errors.slice(0, 10), // Return first 10 errors
+            importedCount,
+            success: true,
+          });
+        } catch (error) {
+          console.error('CSV Upload Error:', error);
+          return Response.json(
+            { error: 'Failed to process CSV file' },
             { status: 500 },
           );
         }
