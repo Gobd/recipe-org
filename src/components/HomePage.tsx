@@ -1,4 +1,4 @@
-import { Shuffle } from 'lucide-react';
+import { Download, Shuffle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RecipeForm } from '@/components/RecipeForm';
@@ -119,6 +119,54 @@ export function HomePage() {
     navigate(`/recipe/${randomRecipe.id}`);
   };
 
+  const handleDownloadCSV = async () => {
+    try {
+      // Get all recipes for CSV export
+      const allRecipes = await RecipeDB.getAllRecipes();
+
+      // Create CSV headers
+      const headers = [
+        'ID',
+        'Name',
+        'Page',
+        'URL',
+        'Notes',
+        'Rating',
+        'Tags',
+        'Created Date',
+      ];
+
+      // Convert recipes to CSV rows
+      const csvRows = allRecipes.map((recipe) => [
+        recipe.id,
+        `"${(recipe.name || '').replace(/"/g, '""')}"`, // Escape quotes in name
+        `"${(recipe.page || '').replace(/"/g, '""')}"`, // Escape quotes in page
+        `"${(recipe.url || '').replace(/"/g, '""')}"`, // Escape quotes in url
+        `"${(recipe.notes || '').replace(/"/g, '""')}"`, // Escape quotes in notes
+        recipe.rating || '',
+        `"${recipe.tags.join(', ')}"`, // Comma-separated tags in single column
+        recipe.createdAt.toLocaleDateString(),
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [headers, ...csvRows]
+        .map((row) => row.join(','))
+        .join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `recipes_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error('Failed to download CSV:', error);
+    }
+  };
+
   return (
     <div className="container mx-auto p-8 max-w-4xl">
       <RecipeForm availableTags={availableTags} onAddRecipe={handleAddRecipe} />
@@ -161,6 +209,17 @@ export function HomePage() {
         onRemoveTag={handleRemoveTag}
         onRatingChange={handleRatingChange}
       />
+
+      <div className="mt-8 text-center">
+        <Button
+          onClick={handleDownloadCSV}
+          variant="outline"
+          className="flex items-center gap-2 mx-auto"
+        >
+          <Download className="w-4 h-4" />
+          Download All Recipes (CSV)
+        </Button>
+      </div>
     </div>
   );
 }
