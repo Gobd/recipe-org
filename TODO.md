@@ -1,1 +1,2 @@
- - add csv upload for recipes, include name, location, rating
+ - add csv upload for recipes, include name, location
+ - change csv download recipe button to 'download recipe log' or something else
