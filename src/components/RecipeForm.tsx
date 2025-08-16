@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DeweyAutoSelector } from '@/components/DeweyAutoSelector';
 import { TagInput } from '@/components/TagInput';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Recipe } from '@/types/recipe';
+import { RecipeDB } from '@/lib/database';
+import type { DeweyCategory, Recipe } from '@/types/recipe';
 
 interface RecipeFormProps {
   availableTags: string[];
@@ -20,7 +22,108 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [deweyDecimal, setDeweyDecimal] = useState('');
+  const [deweyCategories, setDeweyCategories] = useState<DeweyCategory[]>([]);
   const [shouldNavigateToRecipe, setShouldNavigateToRecipe] = useState(false);
+
+  const loadDeweyCategories = async () => {
+    try {
+      const categories = await RecipeDB.getAllDeweyCategories();
+      setDeweyCategories(categories);
+    } catch (error) {
+      console.error('Failed to load Dewey categories:', error);
+    }
+  };
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadDeweyCategories): suppress dependency loadDeweyCategories
+  useEffect(() => {
+    loadDeweyCategories();
+  }, []);
+
+  // Generate hierarchical Dewey tags from a Dewey code
+  const getDeweyHierarchyTags = (deweyCode: string): string[] => {
+    if (!deweyCode) return [];
+
+    const hierarchyTags: string[] = [];
+    const levels = buildDeweyHierarchy(deweyCode);
+
+    for (const levelCode of levels) {
+      const category = deweyCategories.find(
+        (cat) => cat.deweyCode === levelCode,
+      );
+      if (category) {
+        hierarchyTags.push(`${category.deweyCode} ${category.name}`);
+      }
+    }
+
+    return hierarchyTags;
+  };
+
+  // Build all parent levels for a Dewey code
+  const buildDeweyHierarchy = (deweyCode: string): string[] => {
+    const levels: string[] = [];
+    let currentCode = deweyCode;
+
+    // Add the current code
+    levels.unshift(currentCode);
+
+    // Build parent codes
+    while (currentCode) {
+      const parentCode = getDeweyParent(currentCode);
+      if (parentCode) {
+        levels.unshift(parentCode);
+        currentCode = parentCode;
+      } else {
+        break;
+      }
+    }
+
+    return levels;
+  };
+
+  // Get parent code for a Dewey code
+  const getDeweyParent = (deweyCode: string): string | undefined => {
+    if (!deweyCode) return undefined;
+
+    // Handle decimal hierarchy: "000.00" -> "000.0" -> "000"
+    if (deweyCode.includes('.')) {
+      const lastDotIndex = deweyCode.lastIndexOf('.');
+      const beforeDot = deweyCode.substring(0, lastDotIndex);
+      const afterDot = deweyCode.substring(lastDotIndex + 1);
+
+      if (afterDot.length > 1) {
+        // Remove last digit after decimal: "000.00" -> "000.0"
+        return `${beforeDot}.${afterDot.slice(0, -1)}`;
+      } else {
+        // Remove decimal part: "000.0" -> "000"
+        return beforeDot;
+      }
+    }
+
+    // Handle digit hierarchy: "000" -> "00" -> "0" -> undefined
+    if (deweyCode.length <= 1) return undefined;
+    return deweyCode.slice(0, -1);
+  };
+
+  const handleDeweySelect = (deweyCode: string) => {
+    setDeweyDecimal(deweyCode);
+
+    // Auto-generate hierarchical tags
+    if (deweyCode) {
+      const hierarchyTags = getDeweyHierarchyTags(deweyCode);
+
+      // Merge with existing tags, removing duplicates
+      const allTags = [...tags];
+
+      // Remove any existing Dewey tags first (tags that look like "### Name")
+      const nonDeweyTags = allTags.filter((tag) => !/^\d+(\.\d+)*\s/.test(tag));
+
+      // Add the new hierarchy tags
+      const mergedTags = [...nonDeweyTags, ...hierarchyTags];
+
+      setTags(mergedTags);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +131,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
     if (!recipeName.trim()) return;
 
     const newRecipe: Omit<Recipe, 'id' | 'createdAt'> = {
+      deweyDecimal: deweyDecimal || undefined,
       name: recipeName.trim(),
       page: recipePage.trim() || undefined,
       tags: tags,
@@ -37,6 +141,7 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
     setRecipeName('');
     setRecipePage('');
     setTags([]);
+    setDeweyDecimal('');
     setShouldNavigateToRecipe(false);
   };
 
@@ -81,6 +186,13 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
             </div>
           </div>
 
+          <div>
+            <DeweyAutoSelector
+              onSelect={handleDeweySelect}
+              selectedCode={deweyDecimal}
+            />
+          </div>
+
           <div className="flex items-center space-x-2">
             <input
               id="navigate-checkbox"
@@ -98,14 +210,29 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
             <Button type="submit" className="w-full">
               Add Recipe
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => navigate('/tags')}
-            >
-              View All Tags
-            </Button>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/tags')}
+              >
+                View All Tags
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/dewey')}
+              >
+                Browse Dewey
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/dewey-admin')}
+              >
+                Dewey Admin
+              </Button>
+            </div>
           </div>
         </form>
       </CardContent>

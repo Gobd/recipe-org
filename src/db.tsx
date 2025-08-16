@@ -1,5 +1,5 @@
 import { Database } from 'bun:sqlite';
-import type { Recipe } from '@/types/recipe';
+import type { DeweyCategory, Recipe } from '@/types/recipe';
 
 // Database setup
 const db = new Database('recipes.db');
@@ -44,8 +44,48 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dewey_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dewey_code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    level INTEGER NOT NULL,
+    parent_code TEXT,
+    is_active BOOLEAN DEFAULT 1
+  )
+`);
+
+// Add dewey_decimal column to recipes table if it doesn't exist
+try {
+  db.exec('ALTER TABLE recipes ADD COLUMN dewey_decimal TEXT');
+} catch (_error) {
+  // Column already exists, ignore error
+}
+
 // Recipe database operations
 export const RecipeDB = {
+  // Dewey Category operations
+  addDeweyCategory(category: Omit<DeweyCategory, 'id'>): DeweyCategory {
+    const query = db.query(
+      'INSERT INTO dewey_categories (dewey_code, name, level, parent_code, is_active) VALUES (?, ?, ?, ?, ?) RETURNING *',
+    );
+    const result = query.get(
+      category.deweyCode,
+      category.name,
+      category.level,
+      category.parentCode || null,
+      category.isActive,
+    ) as any;
+
+    return {
+      deweyCode: result.dewey_code,
+      id: result.id,
+      isActive: result.is_active,
+      level: result.level,
+      name: result.name,
+      parentCode: result.parent_code || undefined,
+    };
+  },
   // File operations
   addFile(
     recipeId: string | number,
@@ -67,7 +107,7 @@ export const RecipeDB = {
 
     // Insert recipe
     const recipeQuery = db.query(
-      'INSERT INTO recipes (name, page, url, notes, rating, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+      'INSERT INTO recipes (name, page, url, notes, rating, dewey_decimal, created_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
     );
     const result = recipeQuery.get(
       recipe.name,
@@ -75,6 +115,7 @@ export const RecipeDB = {
       recipe.url || null,
       recipe.notes || null,
       recipe.rating || null,
+      recipe.deweyDecimal || null,
       createdAt.toISOString(),
     ) as any;
     const recipeId = result.id;
@@ -100,6 +141,7 @@ export const RecipeDB = {
 
     return {
       createdAt,
+      deweyDecimal: recipe.deweyDecimal,
       id: recipeId,
       name: recipe.name,
       notes: recipe.notes,
@@ -130,6 +172,11 @@ export const RecipeDB = {
     deleteOrphanedTagsQuery.run();
   },
 
+  deleteDeweyCategory(id: number): void {
+    const query = db.query('DELETE FROM dewey_categories WHERE id = ?');
+    query.run(id);
+  },
+
   deleteFile(fileId: string | number): void {
     const id = parseInt(fileId.toString(), 10);
     const query = db.query('DELETE FROM recipe_files WHERE id = ?');
@@ -140,6 +187,22 @@ export const RecipeDB = {
     const query = db.query('DELETE FROM recipes WHERE id = ?');
     query.run(parseInt(id.toString(), 10));
     this.cleanupOrphanedTags();
+  },
+
+  getAllDeweyCategories(): DeweyCategory[] {
+    const query = db.query(
+      'SELECT * FROM dewey_categories ORDER BY dewey_code',
+    );
+    const categories = query.all() as any[];
+
+    return categories.map((category) => ({
+      deweyCode: category.dewey_code,
+      id: category.id,
+      isActive: category.is_active,
+      level: category.level,
+      name: category.name,
+      parentCode: category.parent_code || undefined,
+    }));
   },
   getAllRecipes(): Recipe[] {
     const recipesQuery = db.query(
@@ -158,6 +221,7 @@ export const RecipeDB = {
 
       return {
         createdAt: new Date(recipe.created_at),
+        deweyDecimal: recipe.dewey_decimal || undefined,
         id: recipe.id,
         name: recipe.name,
         notes: recipe.notes || undefined,
@@ -173,6 +237,38 @@ export const RecipeDB = {
     const query = db.query('SELECT name FROM tags ORDER BY name');
     const rows = query.all() as any[];
     return rows.map((row) => row.name);
+  },
+
+  getDeweyChildCategories(parentCode: string): DeweyCategory[] {
+    const query = db.query(
+      'SELECT * FROM dewey_categories WHERE parent_code = ? AND is_active = 1 ORDER BY dewey_code',
+    );
+    const categories = query.all(parentCode) as any[];
+
+    return categories.map((category) => ({
+      deweyCode: category.dewey_code,
+      id: category.id,
+      isActive: category.is_active,
+      level: category.level,
+      name: category.name,
+      parentCode: category.parent_code || undefined,
+    }));
+  },
+
+  getDeweyRootCategories(): DeweyCategory[] {
+    const query = db.query(
+      'SELECT * FROM dewey_categories WHERE parent_code IS NULL AND is_active = 1 ORDER BY dewey_code',
+    );
+    const categories = query.all() as any[];
+
+    return categories.map((category) => ({
+      deweyCode: category.dewey_code,
+      id: category.id,
+      isActive: category.is_active,
+      level: category.level,
+      name: category.name,
+      parentCode: category.parent_code || undefined,
+    }));
   },
 
   getFileById(
@@ -202,6 +298,25 @@ export const RecipeDB = {
       filename: file.filename,
       id: file.id,
     }));
+  },
+
+  getNextDeweySequence(baseDeweyCode: string): string {
+    // Get all recipes with Dewey codes that start with the base code
+    const query = db.query(
+      'SELECT dewey_decimal FROM recipes WHERE dewey_decimal LIKE ? ORDER BY dewey_decimal DESC LIMIT 1',
+    );
+    const result = query.get(`${baseDeweyCode}.%`) as any;
+
+    if (!result) {
+      return `${baseDeweyCode}.001`;
+    }
+
+    const lastCode = result.dewey_decimal;
+    const parts = lastCode.split('.');
+    const lastNumber = parseInt(parts[parts.length - 1], 10);
+    const nextNumber = (lastNumber + 1).toString().padStart(3, '0');
+
+    return `${baseDeweyCode}.${nextNumber}`;
   },
 
   getNextRecipe(currentId: string | number): Recipe | null {
@@ -296,6 +411,7 @@ export const RecipeDB = {
 
     return {
       createdAt: new Date(recipe.created_at),
+      deweyDecimal: recipe.dewey_decimal || undefined,
       files: files.map((file) => ({
         filename: file.filename,
         id: file.id,
@@ -308,6 +424,35 @@ export const RecipeDB = {
       tags: tags.map((tag) => tag.name),
       url: recipe.url || undefined,
     };
+  },
+
+  getRecipesByDeweyCode(deweyCode: string): Recipe[] {
+    const recipesQuery = db.query(
+      'SELECT * FROM recipes WHERE dewey_decimal = ? ORDER BY created_at DESC',
+    );
+    const recipes = recipesQuery.all(deweyCode) as any[];
+
+    return recipes.map((recipe) => {
+      const tagsQuery = db.query(`
+        SELECT t.name 
+        FROM tags t 
+        JOIN recipe_tags rt ON t.id = rt.tag_id 
+        WHERE rt.recipe_id = ?
+      `);
+      const tags = tagsQuery.all(recipe.id) as any[];
+
+      return {
+        createdAt: new Date(recipe.created_at),
+        deweyDecimal: recipe.dewey_decimal || undefined,
+        id: recipe.id,
+        name: recipe.name,
+        notes: recipe.notes || undefined,
+        page: recipe.page || undefined,
+        rating: recipe.rating || undefined,
+        tags: tags.map((tag) => tag.name),
+        url: recipe.url || undefined,
+      };
+    });
   },
 
   getTagsWithCounts(): Array<{ name: string; count: number }> {
@@ -381,6 +526,7 @@ export const RecipeDB = {
 
       return {
         createdAt: new Date(recipe.created_at),
+        deweyDecimal: recipe.dewey_decimal || undefined,
         id: recipe.id,
         name: recipe.name,
         notes: recipe.notes || undefined,
@@ -392,6 +538,54 @@ export const RecipeDB = {
     });
   },
 
+  updateDeweyCategory(
+    id: number,
+    updates: Partial<Omit<DeweyCategory, 'id'>>,
+  ): DeweyCategory {
+    const updateFields = [];
+    const values = [];
+
+    if (updates.deweyCode !== undefined) {
+      updateFields.push('dewey_code = ?');
+      values.push(updates.deweyCode);
+    }
+    if (updates.name !== undefined) {
+      updateFields.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.level !== undefined) {
+      updateFields.push('level = ?');
+      values.push(updates.level);
+    }
+    if (updates.parentCode !== undefined) {
+      updateFields.push('parent_code = ?');
+      values.push(updates.parentCode || null);
+    }
+    if (updates.isActive !== undefined) {
+      updateFields.push('is_active = ?');
+      values.push(updates.isActive);
+    }
+
+    values.push(id);
+
+    const query = db.query(
+      `UPDATE dewey_categories SET ${updateFields.join(', ')} WHERE id = ?`,
+    );
+    query.run(...values);
+
+    const selectQuery = db.query('SELECT * FROM dewey_categories WHERE id = ?');
+    const result = selectQuery.get(id) as any;
+
+    return {
+      deweyCode: result.dewey_code,
+      id: result.id,
+      isActive: result.is_active,
+      level: result.level,
+      name: result.name,
+      parentCode: result.parent_code || undefined,
+    };
+  },
+
   updateRecipe(
     id: string | number,
     updates: {
@@ -401,6 +595,7 @@ export const RecipeDB = {
       notes?: string;
       rating?: number;
       tags?: string[];
+      deweyDecimal?: string;
     },
   ): Recipe {
     const recipeId = parseInt(id.toString(), 10);
@@ -443,6 +638,14 @@ export const RecipeDB = {
         'UPDATE recipes SET rating = ? WHERE id = ?',
       );
       updateRatingQuery.run(updates.rating || null, recipeId);
+    }
+
+    // Update recipe Dewey decimal if provided
+    if (updates.deweyDecimal !== undefined) {
+      const updateDeweyQuery = db.query(
+        'UPDATE recipes SET dewey_decimal = ? WHERE id = ?',
+      );
+      updateDeweyQuery.run(updates.deweyDecimal || null, recipeId);
     }
 
     // Update tags if provided
@@ -490,6 +693,7 @@ export const RecipeDB = {
 
     return {
       createdAt: new Date(recipe.created_at),
+      deweyDecimal: recipe.dewey_decimal || undefined,
       id: recipe.id,
       name: recipe.name,
       notes: recipe.notes || undefined,

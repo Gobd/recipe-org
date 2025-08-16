@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { DeweyAutoSelector } from '@/components/DeweyAutoSelector';
 import { TagInput } from '@/components/TagInput';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StarRating } from '@/components/ui/star-rating';
 import { RecipeDB } from '@/lib/database';
-import type { Recipe } from '@/types/recipe';
+import type { DeweyCategory, Recipe } from '@/types/recipe';
 
 export function RecipePage() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +32,8 @@ export function RecipePage() {
     undefined,
   );
   const [tags, setTags] = useState<string[]>([]);
+  const [deweyDecimal, setDeweyDecimal] = useState('');
+  const [deweyCategories, setDeweyCategories] = useState<DeweyCategory[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [nextRecipe, setNextRecipe] = useState<Recipe | null>(null);
   const [previousRecipe, setPreviousRecipe] = useState<Recipe | null>(null);
@@ -44,10 +47,12 @@ export function RecipePage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadNavigation): suppress dependency loadNavigation
   // biome-ignore lint/correctness/useExhaustiveDependencies(id): suppress dependency id
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadDeweyCategories): suppress dependency loadDeweyCategories
   useEffect(() => {
     loadRecipe();
     loadAvailableTags();
     loadNavigation();
+    loadDeweyCategories();
   }, [id]);
 
   const loadRecipe = async () => {
@@ -64,6 +69,7 @@ export function RecipePage() {
         setRecipeNotes(recipeData.notes || '');
         setRecipeRating(recipeData.rating);
         setTags(recipeData.tags);
+        setDeweyDecimal(recipeData.deweyDecimal || '');
       } else {
         setError('Recipe not found');
       }
@@ -95,6 +101,80 @@ export function RecipePage() {
     } catch (error) {
       console.error('Failed to load navigation:', error);
     }
+  };
+
+  const loadDeweyCategories = async () => {
+    try {
+      const categories = await RecipeDB.getAllDeweyCategories();
+      setDeweyCategories(categories);
+    } catch (error) {
+      console.error('Failed to load Dewey categories:', error);
+    }
+  };
+
+  // Generate hierarchical Dewey tags from a Dewey code
+  const getDeweyHierarchyTags = (deweyCode: string): string[] => {
+    if (!deweyCode) return [];
+
+    const hierarchyTags: string[] = [];
+    const levels = buildDeweyHierarchy(deweyCode);
+
+    for (const levelCode of levels) {
+      const category = deweyCategories.find(
+        (cat) => cat.deweyCode === levelCode,
+      );
+      if (category) {
+        hierarchyTags.push(`${category.deweyCode} ${category.name}`);
+      }
+    }
+
+    return hierarchyTags;
+  };
+
+  // Build all parent levels for a Dewey code
+  const buildDeweyHierarchy = (deweyCode: string): string[] => {
+    const levels: string[] = [];
+    let currentCode = deweyCode;
+
+    // Add the current code
+    levels.unshift(currentCode);
+
+    // Build parent codes
+    while (currentCode) {
+      const parentCode = getDeweyParent(currentCode);
+      if (parentCode) {
+        levels.unshift(parentCode);
+        currentCode = parentCode;
+      } else {
+        break;
+      }
+    }
+
+    return levels;
+  };
+
+  // Get parent code for a Dewey code
+  const getDeweyParent = (deweyCode: string): string | undefined => {
+    if (!deweyCode) return undefined;
+
+    // Handle decimal hierarchy: "000.00" -> "000.0" -> "000"
+    if (deweyCode.includes('.')) {
+      const lastDotIndex = deweyCode.lastIndexOf('.');
+      const beforeDot = deweyCode.substring(0, lastDotIndex);
+      const afterDot = deweyCode.substring(lastDotIndex + 1);
+
+      if (afterDot.length > 1) {
+        // Remove last digit after decimal: "000.00" -> "000.0"
+        return `${beforeDot}.${afterDot.slice(0, -1)}`;
+      } else {
+        // Remove decimal part: "000.0" -> "000"
+        return beforeDot;
+      }
+    }
+
+    // Handle digit hierarchy: "000" -> "00" -> "0" -> undefined
+    if (deweyCode.length <= 1) return undefined;
+    return deweyCode.slice(0, -1);
   };
 
   const handleSave = async () => {
@@ -180,6 +260,39 @@ export function RecipePage() {
     } catch (error) {
       console.error('Failed to save rating:', error);
       setError('Failed to save rating');
+    }
+  };
+
+  const handleDeweyDecimalChange = async (newDeweyDecimal: string) => {
+    if (!id || !recipe) return;
+
+    setDeweyDecimal(newDeweyDecimal);
+
+    // Auto-generate hierarchical tags
+    let updatedTags = [...tags];
+    if (newDeweyDecimal) {
+      const hierarchyTags = getDeweyHierarchyTags(newDeweyDecimal);
+
+      // Remove any existing Dewey tags first (tags that look like "### Name")
+      const nonDeweyTags = updatedTags.filter(
+        (tag) => !/^\d+(\.\d+)*\s/.test(tag),
+      );
+
+      // Add the new hierarchy tags
+      updatedTags = [...nonDeweyTags, ...hierarchyTags];
+      setTags(updatedTags);
+    }
+
+    // Auto-save Dewey decimal and tags immediately
+    try {
+      const updatedRecipe = await RecipeDB.updateRecipe(id, {
+        deweyDecimal: newDeweyDecimal,
+        tags: updatedTags,
+      });
+      setRecipe(updatedRecipe);
+    } catch (error) {
+      console.error('Failed to save Dewey decimal:', error);
+      setError('Failed to save Dewey decimal');
     }
   };
 
@@ -449,6 +562,16 @@ export function RecipePage() {
                   onTagsChange={handleTagsChange}
                   onTagClick={handleTagClick}
                   placeholder="Add new tags (press Enter to add)..."
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Dewey Decimal Classification (auto-saved)</Label>
+              <div className="mt-2">
+                <DeweyAutoSelector
+                  onSelect={handleDeweyDecimalChange}
+                  selectedCode={deweyDecimal}
                 />
               </div>
             </div>
