@@ -182,8 +182,9 @@ export function DeweyAdminPage() {
       const parentCategory = categories.find(
         (cat) => cat.deweyCode === parentCode,
       );
+      const nextChildCode = getNextAvailableChildCode(parentCode);
       setFormData({
-        deweyCode: '',
+        deweyCode: nextChildCode,
         isActive: true,
         level: parentCategory ? parentCategory.level + 1 : 1,
         name: '',
@@ -445,6 +446,62 @@ export function DeweyAdminPage() {
 
   const getChildrenCount = (categoryCode: string) => {
     return categories.filter((cat) => cat.parentCode === categoryCode).length;
+  };
+
+  const getNextAvailableChildCode = (parentCode: string): string => {
+    const existingChildren = categories
+      .filter((cat) => cat.parentCode === parentCode)
+      .map((cat) => cat.deweyCode);
+
+    if (existingChildren.length === 0) {
+      // No existing children, default to decimal notation for consistency
+      return `${parentCode}.0`;
+    }
+
+    // Analyze existing children to determine the pattern
+    const hasDecimalNotation = existingChildren.some((code) =>
+      code.startsWith(`${parentCode}.`),
+    );
+
+    if (hasDecimalNotation) {
+      // Use decimal notation: parent.0, parent.1, parent.2, etc.
+      const existingNumbers = existingChildren
+        .filter((code) => code.startsWith(`${parentCode}.`))
+        .map((code) => {
+          const suffix = code.substring(parentCode.length + 1);
+          return parseInt(suffix, 10);
+        })
+        .filter((num) => !Number.isNaN(num));
+
+      // Find the next available number
+      for (let i = 0; i <= 99; i++) {
+        if (!existingNumbers.includes(i)) {
+          return `${parentCode}.${i}`;
+        }
+      }
+
+      // Fallback
+      return `${parentCode}.0`;
+    } else {
+      // Use direct concatenation: parent0, parent1, parent2, etc.
+      for (let i = 0; i <= 9; i++) {
+        const candidateCode = `${parentCode}${i}`;
+        if (!existingChildren.includes(candidateCode)) {
+          return candidateCode;
+        }
+      }
+
+      // If 0-9 are all taken, continue with 10, 11, 12, etc.
+      for (let i = 10; i <= 99; i++) {
+        const candidateCode = `${parentCode}${i}`;
+        if (!existingChildren.includes(candidateCode)) {
+          return candidateCode;
+        }
+      }
+
+      // Fallback
+      return `${parentCode}0`;
+    }
   };
 
   const renderCategoryTree = (cats: DeweyCategory[], level = 0) => {
