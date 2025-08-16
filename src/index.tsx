@@ -51,6 +51,45 @@ const server = serve({
           },
         }
       : index,
+
+    '/api/files/:id': {
+      async DELETE(req: Bun.BunRequest) {
+        try {
+          const fileId = (req.params as any).id;
+          RecipeDB.deleteFile(fileId);
+          return Response.json({ success: true });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+      async GET(req: Bun.BunRequest) {
+        try {
+          const fileId = (req.params as any).id;
+          const file = RecipeDB.getFileById(fileId);
+
+          if (!file) {
+            return Response.json({ error: 'File not found' }, { status: 404 });
+          }
+
+          return new Response(new Uint8Array(file.content), {
+            headers: {
+              'Content-Disposition': `attachment; filename="${file.filename}"`,
+              'Content-Type': 'application/octet-stream',
+            },
+          });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
     // API Routes
     '/api/recipes': {
       async GET(req) {
@@ -131,6 +170,34 @@ const server = serve({
           const updates = await req.json();
           const updatedRecipe = RecipeDB.updateRecipe(id, updates);
           return Response.json(updatedRecipe);
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/recipes/:id/files': {
+      async POST(req: Bun.BunRequest) {
+        try {
+          const recipeId = (req.params as any).id;
+          const formData = await req.formData();
+          const file = formData.get('file') as File;
+
+          if (!file) {
+            return Response.json(
+              { error: 'No file provided' },
+              { status: 400 },
+            );
+          }
+
+          const content = await file.arrayBuffer();
+          const fileRecord = RecipeDB.addFile(recipeId, file.name, content);
+
+          return Response.json(fileRecord);
         } catch (error) {
           console.error('API Error:', error);
           return Response.json(

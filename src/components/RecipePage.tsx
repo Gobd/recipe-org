@@ -1,4 +1,13 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Save,
+  Upload,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TagInput } from '@/components/TagInput';
@@ -28,6 +37,8 @@ export function RecipePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipe): suppress dependency loadRecipe
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
@@ -188,6 +199,74 @@ export function RecipePage() {
         setError('Failed to delete recipe');
       }
     }
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (!id || !files.length) return;
+
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        await RecipeDB.uploadFile(id, file);
+      }
+      // Reload recipe to get updated files list
+      loadRecipe();
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      setError('Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileDelete = async (fileId: number) => {
+    if (!id) return;
+
+    try {
+      await RecipeDB.deleteFile(fileId);
+      // Reload recipe to get updated files list
+      loadRecipe();
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      setError('Failed to delete file');
+    }
+  };
+
+  const handleFileDownload = async (fileId: number) => {
+    try {
+      await RecipeDB.downloadFile(fileId);
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      setError('Failed to download file');
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files);
+    }
+    // Reset input so same file can be uploaded again if needed
+    e.target.value = '';
   };
 
   if (loading) {
@@ -373,6 +452,100 @@ export function RecipePage() {
                 />
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Label>Files</Label>
+
+            {/* File Upload Area */}
+            {/* biome-ignore lint/a11y/useSemanticElements: File upload drop zone needs div for drag/drop functionality */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                isDragOver
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              role="button"
+              tabIndex={0}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  document.getElementById('file-upload')?.click();
+                }
+              }}
+            >
+              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-600 mb-2">
+                Drag and drop files here or click to browse
+              </p>
+              <input
+                type="file"
+                multiple
+                onChange={handleFileInputChange}
+                className="hidden"
+                id="file-upload"
+                disabled={uploading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                disabled={uploading}
+                className="mx-auto"
+              >
+                {uploading ? 'Uploading...' : 'Choose Files'}
+              </Button>
+            </div>
+
+            {/* Files List */}
+            {recipe?.files && recipe.files.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">
+                  Uploaded Files ({recipe.files.length})
+                </p>
+                {recipe.files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm font-medium">
+                        {file.filename}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleFileDownload(file.id)}
+                        className="flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        Download
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleFileDelete(file.id)}
+                        className="flex items-center gap-1"
+                      >
+                        <X className="w-3 h-3" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
