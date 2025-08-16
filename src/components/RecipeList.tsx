@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StarRating } from '@/components/ui/star-rating';
@@ -18,6 +18,13 @@ export function RecipeList({
   onRemoveTag,
   onRatingChange,
 }: RecipeListProps) {
+  const navigate = useNavigate();
+
+  const handleTagClick = (tag: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/?tags=${encodeURIComponent(tag)}`);
+  };
   if (recipes.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -52,7 +59,14 @@ export function RecipeList({
                       key={tag}
                       className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-sm rounded-md"
                     >
-                      {tag}
+                      <button
+                        type="button"
+                        onClick={(e) => handleTagClick(tag, e)}
+                        className="cursor-pointer hover:underline"
+                        title={`Filter by ${tag} tag`}
+                      >
+                        {tag}
+                      </button>
                       {onRemoveTag && (
                         <button
                           type="button"

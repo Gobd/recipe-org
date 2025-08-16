@@ -158,6 +158,10 @@ export function RecipePage() {
     }
   };
 
+  const handleTagClick = (tag: string) => {
+    navigate(`/?tags=${encodeURIComponent(tag)}`);
+  };
+
   const handleDeleteRecipe = async () => {
     if (!id || !recipe) return;
 
@@ -323,6 +327,7 @@ export function RecipePage() {
                   tags={tags}
                   availableTags={availableTags}
                   onTagsChange={handleTagsChange}
+                  onTagClick={handleTagClick}
                   placeholder="Add new tags (press Enter to add)..."
                 />
               </div>

@@ -6,6 +6,7 @@ interface TagInputProps {
   tags: string[];
   availableTags: string[];
   onTagsChange: (tags: string[]) => void;
+  onTagClick?: (tag: string) => void;
   placeholder?: string;
 }
 
@@ -13,6 +14,7 @@ export function TagInput({
   tags,
   availableTags,
   onTagsChange,
+  onTagClick,
   placeholder = 'Add tags...',
 }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
@@ -84,7 +86,18 @@ export function TagInput({
             key={tag}
             className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-sm rounded-md"
           >
-            {tag}
+            {onTagClick ? (
+              <button
+                type="button"
+                onClick={() => onTagClick(tag)}
+                className="cursor-pointer hover:underline"
+                title={`Filter by ${tag} tag`}
+              >
+                {tag}
+              </button>
+            ) : (
+              tag
+            )}
             <button
               onClick={() => removeTag(tag)}
               className="hover:bg-green-200 p-0.5 ml-1"

@@ -7,9 +7,3 @@ export interface Recipe {
   notes?: string;
   rating?: number;
 }
-
-export interface RecipeStore {
-  recipes: Recipe[];
-  searchTerm: string;
-  selectedTags: string[];
-}
