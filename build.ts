@@ -77,7 +77,7 @@ console.log(
 );
 
 const copiedFiles = await copyFiles(
-  ['**/*.tsx', '**/*.ts', '**/*.svg'],
+  ['**/*.tsx', '**/*.ts'],
   'src',
   outdir,
 );
