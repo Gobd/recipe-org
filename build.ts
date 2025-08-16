@@ -76,7 +76,11 @@ console.log(
   `📄 Found ${entrypoints.length} HTML ${entrypoints.length === 1 ? 'file' : 'files'} to process`,
 );
 
-const copiedFiles = await copyFiles(['**/*.tsx', '**/*.ts'], 'src', outdir);
+const copiedFiles = await copyFiles(
+  ['**/*.tsx', '**/*.ts', '**/*.png'],
+  'src',
+  outdir,
+);
 console.log(`📋 Copied ${copiedFiles.length} additional files\n`);
 
 const result = await Bun.build({
