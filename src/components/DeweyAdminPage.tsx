@@ -443,11 +443,16 @@ export function DeweyAdminPage() {
     return categories.some((cat) => cat.parentCode === categoryCode);
   };
 
+  const getChildrenCount = (categoryCode: string) => {
+    return categories.filter((cat) => cat.parentCode === categoryCode).length;
+  };
+
   const renderCategoryTree = (cats: DeweyCategory[], level = 0) => {
     return cats.map((category) => {
       const categoryHasChildren = hasChildren(category.deweyCode);
       const expanded = isExpanded(category.deweyCode);
       const childCategories = getChildCategories(category.deweyCode);
+      const childrenCount = getChildrenCount(category.deweyCode);
 
       return (
         <div key={category.id} className="mb-2">
@@ -485,6 +490,12 @@ export function DeweyAdminPage() {
                 <span className="text-xs text-gray-400">
                   (Level {category.level})
                 </span>
+                {childrenCount > 0 && (
+                  <span className="text-xs text-blue-600 font-medium">
+                    ({childrenCount}{' '}
+                    {childrenCount === 1 ? 'child' : 'children'})
+                  </span>
+                )}
                 {!category.isActive && (
                   <span className="text-xs text-red-500 font-medium">
                     INACTIVE

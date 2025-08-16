@@ -1,1 +1,3 @@
  - add csv upload for recipes, include name, location, rating
+ - in dewey admin list how many children each category has in the ui
+ - when click add child populate the dewey code with the next available one
