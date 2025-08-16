@@ -105,3 +105,7 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+
+## Recipe Manager
+
+This is a recipe manager with a list page `src/components/RecipeList.tsx`, a single recipe page `src/components/RecipePage.tsx`, a home page `src/components/HomePage.tsx`. The backend is an API in `src/index.tsx` which then uses the database in `src/db.tsx`. The frontend must call the API which then calls the database. The API calls the frontend uses are stored in `src/lib/database.tsx`. Both datbase files implement the same interface.

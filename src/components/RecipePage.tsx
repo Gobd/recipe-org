@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, X } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Save, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TagInput } from '@/components/TagInput';
@@ -22,16 +22,20 @@ export function RecipePage() {
   );
   const [tags, setTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [nextRecipe, setNextRecipe] = useState<Recipe | null>(null);
+  const [previousRecipe, setPreviousRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipe): suppress dependency loadRecipe
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
+  // biome-ignore lint/correctness/useExhaustiveDependencies(loadNavigation): suppress dependency loadNavigation
   useEffect(() => {
     loadRecipe();
     loadAvailableTags();
-  }, []);
+    loadNavigation();
+  }, [id]);
 
   const loadRecipe = async () => {
     if (!id) return;
@@ -63,6 +67,19 @@ export function RecipePage() {
       setAvailableTags(tagsData);
     } catch (error) {
       console.error('Failed to load tags:', error);
+    }
+  };
+
+  const loadNavigation = async () => {
+    if (!id) return;
+
+    try {
+      const next = await RecipeDB.getNextRecipe(id);
+      const previous = await RecipeDB.getPreviousRecipe(id);
+      setNextRecipe(next);
+      setPreviousRecipe(previous);
+    } catch (error) {
+      console.error('Failed to load navigation:', error);
     }
   };
 
@@ -190,6 +207,31 @@ export function RecipePage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to recipes
         </Link>
+
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            {previousRecipe && (
+              <Link
+                to={`/recipe/${previousRecipe.id}`}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                {previousRecipe.name}
+              </Link>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {nextRecipe && (
+              <Link
+                to={`/recipe/${nextRecipe.id}`}
+                className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {nextRecipe.name}
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
+            )}
+          </div>
+        </div>
 
         <div className="flex justify-between items-start">
           <div>

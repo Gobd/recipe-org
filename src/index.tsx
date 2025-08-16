@@ -141,6 +141,46 @@ const server = serve({
       },
     },
 
+    '/api/recipes/:id/next': {
+      async GET(req: Bun.BunRequest) {
+        try {
+          const id = (req.params as any).id;
+          const nextRecipe = RecipeDB.getNextRecipe(id);
+          if (nextRecipe) {
+            return Response.json(nextRecipe);
+          } else {
+            return Response.json(null);
+          }
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/recipes/:id/previous': {
+      async GET(req: Bun.BunRequest) {
+        try {
+          const id = (req.params as any).id;
+          const previousRecipe = RecipeDB.getPreviousRecipe(id);
+          if (previousRecipe) {
+            return Response.json(previousRecipe);
+          } else {
+            return Response.json(null);
+          }
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
     '/api/tags': {
       async GET() {
         try {

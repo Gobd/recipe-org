@@ -37,6 +37,28 @@ export const RecipeDB = {
     return response.json();
   },
 
+  getNextRecipe: async (currentId: string | number): Promise<Recipe | null> => {
+    const response = await fetch(`${API_BASE}/recipes/${currentId}/next`);
+    const recipe = await response.json();
+    if (!recipe) return null;
+    return {
+      ...recipe,
+      createdAt: new Date(recipe.createdAt),
+    };
+  },
+
+  getPreviousRecipe: async (
+    currentId: string | number,
+  ): Promise<Recipe | null> => {
+    const response = await fetch(`${API_BASE}/recipes/${currentId}/previous`);
+    const recipe = await response.json();
+    if (!recipe) return null;
+    return {
+      ...recipe,
+      createdAt: new Date(recipe.createdAt),
+    };
+  },
+
   getRecipeById: async (id: string | number): Promise<Recipe | null> => {
     const response = await fetch(`${API_BASE}/recipes/${id}`);
     if (response.status === 404) {

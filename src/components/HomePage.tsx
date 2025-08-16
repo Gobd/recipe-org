@@ -56,10 +56,14 @@ export function HomePage() {
     }
   }, [searchParams]);
 
-  const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>) => {
+  const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>, shouldNavigate?: boolean) => {
     try {
-      await RecipeDB.addRecipe(recipe);
-      loadRecipes(searchTerm, selectedTags);
+      const newRecipe = await RecipeDB.addRecipe(recipe);
+      if (shouldNavigate) {
+        navigate(`/recipe/${newRecipe.id}`);
+      } else {
+        loadRecipes(searchTerm, selectedTags);
+      }
     } catch (error) {
       console.error('Failed to add recipe:', error);
     }
@@ -114,15 +118,6 @@ export function HomePage() {
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          Recipe Manager
-        </h1>
-        <p className="text-gray-600">
-          Organize your recipes with tags and search
-        </p>
-      </div>
-
       <RecipeForm availableTags={availableTags} onAddRecipe={handleAddRecipe} />
 
       <SearchBar

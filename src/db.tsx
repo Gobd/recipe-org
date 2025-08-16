@@ -138,6 +138,76 @@ export const RecipeDB = {
     return rows.map((row) => row.name);
   },
 
+  getNextRecipe(currentId: string | number): Recipe | null {
+    const recipeId = parseInt(currentId.toString(), 10);
+
+    // Get the next recipe (newer) - one with a more recent created_at
+    const recipeQuery = db.query(`
+      SELECT * FROM recipes 
+      WHERE created_at > (
+        SELECT created_at FROM recipes WHERE id = ?
+      )
+      ORDER BY created_at ASC 
+      LIMIT 1
+    `);
+    const recipe = recipeQuery.get(recipeId) as any;
+
+    if (!recipe) return null;
+
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipe.id) as any[];
+
+    return {
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
+      name: recipe.name,
+      notes: recipe.notes || undefined,
+      page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
+      tags: tags.map((tag) => tag.name),
+    };
+  },
+
+  getPreviousRecipe(currentId: string | number): Recipe | null {
+    const recipeId = parseInt(currentId.toString(), 10);
+
+    // Get the previous recipe (older) - one with an earlier created_at
+    const recipeQuery = db.query(`
+      SELECT * FROM recipes 
+      WHERE created_at < (
+        SELECT created_at FROM recipes WHERE id = ?
+      )
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `);
+    const recipe = recipeQuery.get(recipeId) as any;
+
+    if (!recipe) return null;
+
+    const tagsQuery = db.query(`
+      SELECT t.name 
+      FROM tags t 
+      JOIN recipe_tags rt ON t.id = rt.tag_id 
+      WHERE rt.recipe_id = ?
+    `);
+    const tags = tagsQuery.all(recipe.id) as any[];
+
+    return {
+      createdAt: new Date(recipe.created_at),
+      id: recipe.id,
+      name: recipe.name,
+      notes: recipe.notes || undefined,
+      page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
+      tags: tags.map((tag) => tag.name),
+    };
+  },
+
   getRecipeById(id: string | number): Recipe | null {
     const recipeId = parseInt(id.toString(), 10);
     const recipeQuery = db.query('SELECT * FROM recipes WHERE id = ?');
