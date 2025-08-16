@@ -9,6 +9,8 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     page TEXT,
+    notes TEXT,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -37,11 +39,13 @@ export const RecipeDB = {
 
     // Insert recipe
     const recipeQuery = db.query(
-      'INSERT INTO recipes (name, page, created_at) VALUES (?, ?, ?) RETURNING id',
+      'INSERT INTO recipes (name, page, notes, rating, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
     );
     const result = recipeQuery.get(
       recipe.name,
       recipe.page || null,
+      recipe.notes || null,
+      recipe.rating || null,
       createdAt.toISOString(),
     ) as any;
     const recipeId = result.id;
@@ -69,7 +73,9 @@ export const RecipeDB = {
       createdAt,
       id: recipeId,
       name: recipe.name,
+      notes: recipe.notes,
       page: recipe.page,
+      rating: recipe.rating,
       tags: recipe.tags,
     };
   },
@@ -118,7 +124,9 @@ export const RecipeDB = {
         createdAt: new Date(recipe.created_at),
         id: recipe.id,
         name: recipe.name,
+        notes: recipe.notes || undefined,
         page: recipe.page || undefined,
+        rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
       };
     });
@@ -149,7 +157,9 @@ export const RecipeDB = {
       createdAt: new Date(recipe.created_at),
       id: recipe.id,
       name: recipe.name,
+      notes: recipe.notes || undefined,
       page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
     };
   },
@@ -227,7 +237,9 @@ export const RecipeDB = {
         createdAt: new Date(recipe.created_at),
         id: recipe.id,
         name: recipe.name,
+        notes: recipe.notes || undefined,
         page: recipe.page || undefined,
+        rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
       };
     });
@@ -235,7 +247,13 @@ export const RecipeDB = {
 
   updateRecipe(
     id: string | number,
-    updates: { name?: string; page?: string; tags?: string[] },
+    updates: {
+      name?: string;
+      page?: string;
+      notes?: string;
+      rating?: number;
+      tags?: string[];
+    },
   ): Recipe {
     const recipeId = parseInt(id.toString(), 10);
 
@@ -253,6 +271,22 @@ export const RecipeDB = {
         'UPDATE recipes SET page = ? WHERE id = ?',
       );
       updatePageQuery.run(updates.page || null, recipeId);
+    }
+
+    // Update recipe notes if provided
+    if (updates.notes !== undefined) {
+      const updateNotesQuery = db.query(
+        'UPDATE recipes SET notes = ? WHERE id = ?',
+      );
+      updateNotesQuery.run(updates.notes || null, recipeId);
+    }
+
+    // Update recipe rating if provided
+    if (updates.rating !== undefined) {
+      const updateRatingQuery = db.query(
+        'UPDATE recipes SET rating = ? WHERE id = ?',
+      );
+      updateRatingQuery.run(updates.rating || null, recipeId);
     }
 
     // Update tags if provided
@@ -302,7 +336,9 @@ export const RecipeDB = {
       createdAt: new Date(recipe.created_at),
       id: recipe.id,
       name: recipe.name,
+      notes: recipe.notes || undefined,
       page: recipe.page || undefined,
+      rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
     };
   },

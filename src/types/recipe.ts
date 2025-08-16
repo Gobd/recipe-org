@@ -4,6 +4,8 @@ export interface Recipe {
   page?: string;
   tags: string[];
   createdAt: Date;
+  notes?: string;
+  rating?: number;
 }
 
 export interface RecipeStore {

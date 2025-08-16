@@ -75,7 +75,13 @@ export const RecipeDB = {
 
   async updateRecipe(
     id: string | number,
-    updates: { name?: string; page?: string; tags?: string[] },
+    updates: {
+      name?: string;
+      page?: string;
+      notes?: string;
+      rating?: number;
+      tags?: string[];
+    },
   ): Promise<Recipe> {
     const response = await fetch(`${API_BASE}/recipes/${id}`, {
       body: JSON.stringify(updates),
