@@ -217,7 +217,7 @@ export function HomePage() {
           className="flex items-center gap-2 mx-auto"
         >
           <Download className="w-4 h-4" />
-          Download All Recipes (CSV)
+          Download Recipe Info (CSV)
         </Button>
       </div>
     </div>
