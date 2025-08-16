@@ -20,7 +20,7 @@
     "@types/react-dom": "^19",
     "typescript": "~5.9.2"
   },
-  "name": "bun-react-template",
+  "name": "recipe-organizer",
   "private": true,
   "scripts": {
     "build": "bun run build.ts && bun build ./dist/index.tsx --compile --minify --bytecode --outfile recipe_manager",

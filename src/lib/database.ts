@@ -204,6 +204,30 @@ export const RecipeDB = {
     };
   },
 
+  // CSV operations
+  async uploadCSV(file: File): Promise<{
+    success: boolean;
+    importedCount: number;
+    updatedCount: number;
+    errorCount: number;
+    errors: string[];
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE}/recipes/upload-csv`, {
+      body: formData,
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload CSV');
+    }
+
+    return response.json();
+  },
+
   // File operations
   async uploadFile(
     recipeId: string | number,

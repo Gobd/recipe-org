@@ -217,8 +217,20 @@ export function HomePage() {
           className="flex items-center gap-2 mx-auto"
         >
           <Download className="w-4 h-4" />
-          Download All Recipes (CSV)
+          Download Recipe Info (CSV)
         </Button>
+
+        <p className="text-xs text-gray-500 mt-4">
+          Favicon from{' '}
+          <a
+            href="https://www.flaticon.com/authors/photo3idea-studio"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-gray-700"
+          >
+            photo3idea-studio
+          </a>
+        </p>
       </div>
     </div>
   );
