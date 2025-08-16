@@ -1,4 +1,14 @@
-import { ArrowLeft, Edit2, Plus, Save, Trash2, Upload, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -24,6 +34,9 @@ export function DeweyAdminPage() {
     null,
   );
   const [showAddForm, setShowAddForm] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(),
+  );
   const [formData, setFormData] = useState<CategoryFormData>({
     deweyCode: '',
     isActive: true,
@@ -412,77 +425,119 @@ export function DeweyAdminPage() {
       .sort((a, b) => a.deweyCode.localeCompare(b.deweyCode));
   };
 
+  const toggleExpanded = (categoryCode: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryCode)) {
+      newExpanded.delete(categoryCode);
+    } else {
+      newExpanded.add(categoryCode);
+    }
+    setExpandedCategories(newExpanded);
+  };
+
+  const isExpanded = (categoryCode: string) => {
+    return expandedCategories.has(categoryCode);
+  };
+
+  const hasChildren = (categoryCode: string) => {
+    return categories.some((cat) => cat.parentCode === categoryCode);
+  };
+
   const renderCategoryTree = (cats: DeweyCategory[], level = 0) => {
-    return cats.map((category) => (
-      <div key={category.id} className="mb-2">
-        <div
-          className={`flex items-center justify-between p-3 rounded-lg border ${
-            category.isActive ? 'bg-white' : 'bg-gray-100'
-          } ${editingCategory?.id === category.id ? 'ring-2 ring-blue-500' : ''}`}
-          style={{ marginLeft: `${level * 20}px` }}
-        >
-          <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-sm font-medium min-w-[80px]">
-                {category.deweyCode}
-              </span>
-              <span
-                className={`text-sm ${!category.isActive ? 'text-gray-500' : ''}`}
-              >
-                {category.name}
-              </span>
-              <span className="text-xs text-gray-400">
-                (Level {category.level})
-              </span>
-              {!category.isActive && (
-                <span className="text-xs text-red-500 font-medium">
-                  INACTIVE
+    return cats.map((category) => {
+      const categoryHasChildren = hasChildren(category.deweyCode);
+      const expanded = isExpanded(category.deweyCode);
+      const childCategories = getChildCategories(category.deweyCode);
+
+      return (
+        <div key={category.id} className="mb-2">
+          <div
+            className={`flex items-center justify-between p-3 rounded-lg border ${
+              category.isActive ? 'bg-white' : 'bg-gray-100'
+            } ${editingCategory?.id === category.id ? 'ring-2 ring-blue-500' : ''}`}
+            style={{ marginLeft: `${level * 20}px` }}
+          >
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                {categoryHasChildren && (
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(category.deweyCode)}
+                    className="flex items-center justify-center w-5 h-5 rounded hover:bg-gray-200 transition-colors"
+                    aria-label={expanded ? 'Collapse' : 'Expand'}
+                  >
+                    {expanded ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                {!categoryHasChildren && <div className="w-5" />}
+                <span className="font-mono text-sm font-medium min-w-[80px]">
+                  {category.deweyCode}
                 </span>
-              )}
+                <span
+                  className={`text-sm ${!category.isActive ? 'text-gray-500' : ''}`}
+                >
+                  {category.name}
+                </span>
+                <span className="text-xs text-gray-400">
+                  (Level {category.level})
+                </span>
+                {!category.isActive && (
+                  <span className="text-xs text-red-500 font-medium">
+                    INACTIVE
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => startAdding(category.deweyCode)}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                Add Child
+              </Button>
+              <Button
+                onClick={() => startEditing(category)}
+                size="sm"
+                variant="outline"
+                className="flex items-center gap-1"
+              >
+                <Edit2 className="w-3 h-3" />
+                Edit
+              </Button>
+              <Button
+                onClick={() => handleDeleteCategory(category)}
+                size="sm"
+                variant="destructive"
+                className="flex items-center gap-1"
+              >
+                <Trash2 className="w-3 h-3" />
+                Delete
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => startAdding(category.deweyCode)}
-              size="sm"
-              variant="outline"
-              className="flex items-center gap-1"
+          {categoryHasChildren && (
+            <div
+              className="mt-2"
+              style={{
+                contentVisibility: expanded ? 'visible' : 'auto',
+                display: expanded ? 'block' : 'none',
+              }}
             >
-              <Plus className="w-3 h-3" />
-              Add Child
-            </Button>
-            <Button
-              onClick={() => startEditing(category)}
-              size="sm"
-              variant="outline"
-              className="flex items-center gap-1"
-            >
-              <Edit2 className="w-3 h-3" />
-              Edit
-            </Button>
-            <Button
-              onClick={() => handleDeleteCategory(category)}
-              size="sm"
-              variant="destructive"
-              className="flex items-center gap-1"
-            >
-              <Trash2 className="w-3 h-3" />
-              Delete
-            </Button>
-          </div>
+              {expanded && renderCategoryTree(childCategories, level + 1)}
+            </div>
+          )}
         </div>
-
-        {getChildCategories(category.deweyCode).length > 0 && (
-          <div className="mt-2">
-            {renderCategoryTree(
-              getChildCategories(category.deweyCode),
-              level + 1,
-            )}
-          </div>
-        )}
-      </div>
-    ));
+      );
+    });
   };
 
   if (loading) {

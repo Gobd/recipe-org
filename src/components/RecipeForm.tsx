@@ -221,13 +221,6 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/dewey')}
-              >
-                Browse Dewey
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
                 onClick={() => navigate('/dewey-admin')}
               >
                 Dewey Admin
