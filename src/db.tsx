@@ -9,6 +9,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     page TEXT,
+    url TEXT,
     notes TEXT,
     rating INTEGER CHECK (rating >= 1 AND rating <= 5),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -39,11 +40,12 @@ export const RecipeDB = {
 
     // Insert recipe
     const recipeQuery = db.query(
-      'INSERT INTO recipes (name, page, notes, rating, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
+      'INSERT INTO recipes (name, page, url, notes, rating, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
     );
     const result = recipeQuery.get(
       recipe.name,
       recipe.page || null,
+      recipe.url || null,
       recipe.notes || null,
       recipe.rating || null,
       createdAt.toISOString(),
@@ -77,6 +79,7 @@ export const RecipeDB = {
       page: recipe.page,
       rating: recipe.rating,
       tags: recipe.tags,
+      url: recipe.url,
     };
   },
 
@@ -128,6 +131,7 @@ export const RecipeDB = {
         page: recipe.page || undefined,
         rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
+        url: recipe.url || undefined,
       };
     });
   },
@@ -231,6 +235,7 @@ export const RecipeDB = {
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
+      url: recipe.url || undefined,
     };
   },
 
@@ -311,6 +316,7 @@ export const RecipeDB = {
         page: recipe.page || undefined,
         rating: recipe.rating || undefined,
         tags: tags.map((tag) => tag.name),
+        url: recipe.url || undefined,
       };
     });
   },
@@ -320,6 +326,7 @@ export const RecipeDB = {
     updates: {
       name?: string;
       page?: string;
+      url?: string;
       notes?: string;
       rating?: number;
       tags?: string[];
@@ -341,6 +348,14 @@ export const RecipeDB = {
         'UPDATE recipes SET page = ? WHERE id = ?',
       );
       updatePageQuery.run(updates.page || null, recipeId);
+    }
+
+    // Update recipe URL if provided
+    if (updates.url !== undefined) {
+      const updateUrlQuery = db.query(
+        'UPDATE recipes SET url = ? WHERE id = ?',
+      );
+      updateUrlQuery.run(updates.url || null, recipeId);
     }
 
     // Update recipe notes if provided
@@ -410,6 +425,7 @@ export const RecipeDB = {
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
       tags: tags.map((tag) => tag.name),
+      url: recipe.url || undefined,
     };
   },
 };

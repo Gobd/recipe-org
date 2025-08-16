@@ -16,6 +16,7 @@ export function RecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
+  const [recipeUrl, setRecipeUrl] = useState('');
   const [recipeNotes, setRecipeNotes] = useState('');
   const [recipeRating, setRecipeRating] = useState<number | undefined>(
     undefined,
@@ -48,6 +49,7 @@ export function RecipePage() {
         setRecipe(recipeData);
         setRecipeName(recipeData.name);
         setRecipePage(recipeData.page || '');
+        setRecipeUrl(recipeData.url || '');
         setRecipeNotes(recipeData.notes || '');
         setRecipeRating(recipeData.rating);
         setTags(recipeData.tags);
@@ -89,15 +91,23 @@ export function RecipePage() {
 
     const hasNameChanges = recipeName !== recipe.name;
     const hasPageChanges = recipePage !== (recipe.page || '');
+    const hasUrlChanges = recipeUrl !== (recipe.url || '');
     const hasNotesChanges = recipeNotes !== (recipe.notes || '');
 
-    if (!hasNameChanges && !hasPageChanges && !hasNotesChanges) return;
+    if (
+      !hasNameChanges &&
+      !hasPageChanges &&
+      !hasUrlChanges &&
+      !hasNotesChanges
+    )
+      return;
 
     try {
       setSaving(true);
       const updates: {
         name?: string;
         page?: string;
+        url?: string;
         notes?: string;
       } = {};
 
@@ -107,6 +117,10 @@ export function RecipePage() {
 
       if (hasPageChanges) {
         updates.page = recipePage;
+      }
+
+      if (hasUrlChanges) {
+        updates.url = recipeUrl;
       }
 
       if (hasNotesChanges) {
@@ -200,6 +214,7 @@ export function RecipePage() {
   const hasChanges =
     recipeName !== recipe.name ||
     recipePage !== (recipe.page || '') ||
+    recipeUrl !== (recipe.url || '') ||
     recipeNotes !== (recipe.notes || '');
 
   return (
@@ -296,6 +311,32 @@ export function RecipePage() {
                 className="mt-1"
               />
             </div>
+
+            <div>
+              <Label htmlFor="recipe-url">URL</Label>
+              <Input
+                id="recipe-url"
+                type="url"
+                value={recipeUrl}
+                onChange={(e) => setRecipeUrl(e.target.value)}
+                placeholder="Enter recipe URL..."
+                className="mt-1"
+              />
+            </div>
+
+            {recipe.url && (
+              <p className="text-sm text-blue-600 mb-2 font-medium">
+                <a
+                  href={recipe.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="hover:underline"
+                >
+                  🔗 {recipe.url}
+                </a>
+              </p>
+            )}
 
             <div>
               <Label htmlFor="recipe-notes">Notes</Label>

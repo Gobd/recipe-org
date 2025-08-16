@@ -100,6 +100,7 @@ export const RecipeDB = {
     updates: {
       name?: string;
       page?: string;
+      url?: string;
       notes?: string;
       rating?: number;
       tags?: string[];
