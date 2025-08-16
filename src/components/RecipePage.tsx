@@ -31,6 +31,7 @@ export function RecipePage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipe): suppress dependency loadRecipe
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
   // biome-ignore lint/correctness/useExhaustiveDependencies(loadNavigation): suppress dependency loadNavigation
+  // biome-ignore lint/correctness/useExhaustiveDependencies(id): suppress dependency id
   useEffect(() => {
     loadRecipe();
     loadAvailableTags();

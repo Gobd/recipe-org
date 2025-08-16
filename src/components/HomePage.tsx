@@ -56,7 +56,10 @@ export function HomePage() {
     }
   }, [searchParams]);
 
-  const handleAddRecipe = async (recipe: Omit<Recipe, 'id' | 'createdAt'>, shouldNavigate?: boolean) => {
+  const handleAddRecipe = async (
+    recipe: Omit<Recipe, 'id' | 'createdAt'>,
+    shouldNavigate?: boolean,
+  ) => {
     try {
       const newRecipe = await RecipeDB.addRecipe(recipe);
       if (shouldNavigate) {

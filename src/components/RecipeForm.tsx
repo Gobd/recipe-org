@@ -9,7 +9,10 @@ import type { Recipe } from '@/types/recipe';
 
 interface RecipeFormProps {
   availableTags: string[];
-  onAddRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>, shouldNavigate?: boolean) => void;
+  onAddRecipe: (
+    recipe: Omit<Recipe, 'id' | 'createdAt'>,
+    shouldNavigate?: boolean,
+  ) => void;
 }
 
 export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
