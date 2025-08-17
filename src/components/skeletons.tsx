@@ -35,8 +35,96 @@ export function RecipeFormSkeleton() {
           </div>
 
           {/* Dewey selector */}
-          <div>
-            <Skeleton className="h-10 w-full" />
+          <div className="w-full space-y-4">
+            {/* Dewey selector label and breadcrumb area */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-5 w-56" />
+              </div>
+
+              {/* Breadcrumb navigation */}
+              <div className="flex items-center gap-2 mb-3">
+                <Skeleton className="h-6 w-12 rounded" />
+              </div>
+            </div>
+
+            {/* Scrollable category container - matches max-h-80 */}
+            <div className="border rounded-lg max-h-80 overflow-y-auto bg-white">
+              <div className="divide-y">
+                {/* 6 category items to match real content */}
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-24 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-5 w-20 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-5 w-28 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-32 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-24 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex-1 flex items-center gap-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-20 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Checkbox section */}
