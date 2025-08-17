@@ -1,23 +1,34 @@
 import { Download, Shuffle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RecipeForm } from '@/components/RecipeForm';
 import { RecipeList } from '@/components/RecipeList';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
-import { RecipeDB } from '@/lib/database';
+import { useRecipeStore } from '@/store/recipeStore';
 import type { Recipe } from '@/types/recipe';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
-  const loadRecipes = async (searchTerm: string, selectedTags: string[]) => {
-    // Update URL params to reflect current search state
+  // Zustand store
+  const {
+    recipes,
+    tags: availableTags,
+    searchTerm,
+    selectedTags,
+    setSearchTerm,
+    setSelectedTags,
+    loadRecipes,
+    addRecipe,
+    deleteRecipe,
+    removeTagFromRecipe,
+    updateRecipeRating,
+  } = useRecipeStore();
+
+  // Update URL params when search state changes
+  useEffect(() => {
     const newParams = new URLSearchParams();
     if (searchTerm) {
       newParams.set('search', searchTerm);
@@ -26,86 +37,40 @@ export function HomePage() {
       newParams.set('tags', selectedTags.join(','));
     }
     setSearchParams(newParams);
+  }, [searchTerm, selectedTags, setSearchParams]);
 
-    try {
-      const [recipesData, tagsData] = await Promise.all([
-        searchTerm || selectedTags.length > 0
-          ? RecipeDB.searchRecipes(searchTerm, selectedTags)
-          : RecipeDB.getAllRecipes(),
-        RecipeDB.getAllTags(),
-      ]);
-      setRecipes(recipesData);
-      setAvailableTags(tagsData);
-    } catch (error) {
-      console.error('Failed to load recipes:', error);
-    }
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipes): suppress dependency loadRecipes
+  // Initialize from URL params on mount
   useEffect(() => {
     const tagsParam = searchParams.get('tags');
     const searchParam = searchParams.get('search');
 
     if (tagsParam || searchParam) {
       const tags = tagsParam ? tagsParam.split(',') : [];
-      setSelectedTags(tags);
-      setSearchTerm(searchParam || '');
-      loadRecipes(searchParam || '', tags);
+      const search = searchParam || '';
+
+      // Set store state to match URL without triggering search yet
+      useRecipeStore.setState({
+        searchTerm: search,
+        selectedTags: tags,
+      });
+
+      loadRecipes(search, tags);
     } else {
       loadRecipes('', []);
     }
-  }, [searchParams]);
+  }, [loadRecipes, searchParams]);
 
   const handleAddRecipe = async (
     recipe: Omit<Recipe, 'id' | 'createdAt'>,
     shouldNavigate?: boolean,
   ) => {
     try {
-      const newRecipe = await RecipeDB.addRecipe(recipe);
+      const newRecipe = await addRecipe(recipe);
       if (shouldNavigate) {
         navigate(`/recipe/${newRecipe.id}`);
-      } else {
-        loadRecipes(searchTerm, selectedTags);
       }
     } catch (error) {
       console.error('Failed to add recipe:', error);
-    }
-  };
-
-  const handleDeleteRecipe = async (id: string | number) => {
-    try {
-      await RecipeDB.deleteRecipe(id);
-      loadRecipes(searchTerm, selectedTags);
-    } catch (error) {
-      console.error('Failed to delete recipe:', error);
-    }
-  };
-
-  const handleRemoveTag = async (
-    recipeId: string | number,
-    tagToRemove: string,
-  ) => {
-    try {
-      const recipe = recipes.find((r) => r.id === recipeId);
-      if (recipe) {
-        const newTags = recipe.tags.filter((tag) => tag !== tagToRemove);
-        await RecipeDB.updateRecipe(recipeId, { tags: newTags });
-        loadRecipes(searchTerm, selectedTags);
-      }
-    } catch (error) {
-      console.error('Failed to remove tag:', error);
-    }
-  };
-
-  const handleRatingChange = async (
-    recipeId: string | number,
-    rating: number,
-  ) => {
-    try {
-      await RecipeDB.updateRecipe(recipeId, { rating });
-      loadRecipes(searchTerm, selectedTags);
-    } catch (error) {
-      console.error('Failed to update rating:', error);
     }
   };
 
@@ -121,7 +86,8 @@ export function HomePage() {
 
   const handleDownloadCSV = async () => {
     try {
-      // Get all recipes for CSV export
+      // Always get all recipes for CSV export, not just filtered ones
+      const { RecipeDB } = await import('@/lib/database');
       const allRecipes = await RecipeDB.getAllRecipes();
 
       // Create CSV headers
@@ -175,14 +141,8 @@ export function HomePage() {
         searchTerm={searchTerm}
         selectedTags={selectedTags}
         availableTags={availableTags}
-        onSearchTermChange={(t) => {
-          setSearchTerm(t);
-          loadRecipes(t, selectedTags);
-        }}
-        onSelectedTagsChange={(t) => {
-          setSelectedTags(t);
-          loadRecipes(searchTerm, t);
-        }}
+        onSearchTermChange={setSearchTerm}
+        onSelectedTagsChange={setSelectedTags}
       />
 
       <div className="flex justify-between items-center mb-6">
@@ -205,9 +165,9 @@ export function HomePage() {
 
       <RecipeList
         recipes={recipes}
-        onDeleteRecipe={handleDeleteRecipe}
-        onRemoveTag={handleRemoveTag}
-        onRatingChange={handleRatingChange}
+        onDeleteRecipe={deleteRecipe}
+        onRemoveTag={removeTagFromRecipe}
+        onRatingChange={updateRecipeRating}
       />
 
       <div className="mt-8 text-center">
