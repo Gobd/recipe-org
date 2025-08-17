@@ -54,10 +54,8 @@ export function DeweyAdminPage() {
   });
 
   useEffect(() => {
-    if (categories.length === 0) {
-      loadDeweyCategories();
-    }
-  }, [categories.length, loadDeweyCategories]);
+    loadDeweyCategories();
+  }, [loadDeweyCategories]);
 
   const handleAddCategory = async () => {
     try {

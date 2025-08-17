@@ -25,10 +25,8 @@ export function DeweyAutoSelector({
   } = useRecipeStore();
 
   useEffect(() => {
-    if (deweyCategories.length === 0) {
-      loadDeweyCategories();
-    }
-  }, [deweyCategories.length, loadDeweyCategories]);
+    loadDeweyCategories();
+  }, [loadDeweyCategories]);
 
   useEffect(() => {
     if (selectedCode) {

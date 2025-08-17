@@ -9,6 +9,8 @@ interface RecipeStore {
   deweyCategories: DeweyCategory[];
   loading: boolean;
   error: string | null;
+  deweyCategoriesLoaded: boolean;
+  deweyCategoriesLoading: boolean;
 
   // Search state
   searchTerm: string;
@@ -178,6 +180,8 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
     }
   },
   deweyCategories: [],
+  deweyCategoriesLoaded: false,
+  deweyCategoriesLoading: false,
 
   downloadFile: async (fileId) => {
     try {
@@ -256,12 +260,27 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 
   // Dewey operations
   loadDeweyCategories: async () => {
+    const { deweyCategoriesLoaded, deweyCategoriesLoading } = get();
+
+    // Prevent duplicate calls
+    if (deweyCategoriesLoaded || deweyCategoriesLoading) {
+      return;
+    }
+
+    set({ deweyCategoriesLoading: true });
     try {
       const categories = await RecipeDB.getAllDeweyCategories();
-      set({ deweyCategories: categories });
+      set({
+        deweyCategories: categories,
+        deweyCategoriesLoaded: true,
+        deweyCategoriesLoading: false,
+      });
     } catch (error) {
       console.error('Failed to load Dewey categories:', error);
-      set({ error: 'Failed to load Dewey categories' });
+      set({
+        deweyCategoriesLoading: false,
+        error: 'Failed to load Dewey categories',
+      });
     }
   },
   loading: false,

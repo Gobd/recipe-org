@@ -29,10 +29,8 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
   const { deweyCategories, loadDeweyCategories, uploadCSV } = useRecipeStore();
 
   useEffect(() => {
-    if (deweyCategories.length === 0) {
-      loadDeweyCategories();
-    }
-  }, [deweyCategories.length, loadDeweyCategories]);
+    loadDeweyCategories();
+  }, [loadDeweyCategories]);
 
   // Generate hierarchical Dewey tags from a Dewey code
   const getDeweyHierarchyTags = (deweyCode: string): string[] => {
