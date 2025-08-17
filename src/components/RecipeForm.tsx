@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RecipeDB } from '@/lib/database';
-import type { DeweyCategory, Recipe } from '@/types/recipe';
+import { useRecipeStore } from '@/store/recipeStore';
+import type { Recipe } from '@/types/recipe';
 
 interface RecipeFormProps {
   availableTags: string[];
@@ -24,22 +24,15 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
   const [recipePage, setRecipePage] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [deweyDecimal, setDeweyDecimal] = useState('');
-  const [deweyCategories, setDeweyCategories] = useState<DeweyCategory[]>([]);
   const [shouldNavigateToRecipe, setShouldNavigateToRecipe] = useState(false);
 
-  const loadDeweyCategories = async () => {
-    try {
-      const categories = await RecipeDB.getAllDeweyCategories();
-      setDeweyCategories(categories);
-    } catch (error) {
-      console.error('Failed to load Dewey categories:', error);
-    }
-  };
+  const { deweyCategories, loadDeweyCategories, uploadCSV } = useRecipeStore();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadDeweyCategories): suppress dependency loadDeweyCategories
   useEffect(() => {
-    loadDeweyCategories();
-  }, []);
+    if (deweyCategories.length === 0) {
+      loadDeweyCategories();
+    }
+  }, [deweyCategories.length, loadDeweyCategories]);
 
   // Generate hierarchical Dewey tags from a Dewey code
   const getDeweyHierarchyTags = (deweyCode: string): string[] => {
@@ -166,34 +159,29 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
       }
 
       try {
-        const result = await RecipeDB.uploadCSV(file);
+        const result = await uploadCSV(file);
 
-        if (result.success) {
-          let message = `Successfully processed CSV:`;
-          if (result.importedCount > 0) {
-            message += `\n- Imported ${result.importedCount} new recipes`;
-          }
-          if (result.updatedCount > 0) {
-            message += `\n- Updated ${result.updatedCount} existing recipes`;
-          }
-
-          if (result.errorCount > 0) {
-            message += `\n\nThere were ${result.errorCount} errors during import:`;
-            result.errors.forEach((error, index) => {
-              if (index < 3) {
-                message += `\n- ${error}`;
-              }
-            });
-            if (result.errors.length > 3) {
-              message += `\n... and ${result.errors.length - 3} more errors`;
-            }
-          }
-
-          alert(message);
-
-          // Refresh the page to show new recipes
-          window.location.reload();
+        let message = `Successfully processed CSV:`;
+        if (result.importedCount > 0) {
+          message += `\n- Imported ${result.importedCount} new recipes`;
         }
+        if (result.updatedCount > 0) {
+          message += `\n- Updated ${result.updatedCount} existing recipes`;
+        }
+
+        if (result.errorCount > 0) {
+          message += `\n\nThere were ${result.errorCount} errors during import:`;
+          result.errors.forEach((error, index) => {
+            if (index < 3) {
+              message += `\n- ${error}`;
+            }
+          });
+          if (result.errors.length > 3) {
+            message += `\n... and ${result.errors.length - 3} more errors`;
+          }
+        }
+
+        alert(message);
       } catch (error) {
         console.error('Failed to upload CSV:', error);
         alert(

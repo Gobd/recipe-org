@@ -20,6 +20,7 @@ interface RecipeStore {
 
   // Recipe operations
   loadRecipes: (searchTerm?: string, selectedTags?: string[]) => Promise<void>;
+  getAllRecipesForExport: () => Promise<Recipe[]>;
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>) => Promise<Recipe>;
   updateRecipe: (
     id: string | number,
@@ -45,6 +46,18 @@ interface RecipeStore {
 
   // Dewey operations
   loadDeweyCategories: () => Promise<void>;
+  getNextDeweySequence: (baseCode: string) => Promise<string>;
+  addDeweyCategory: (
+    category: Omit<DeweyCategory, 'id'>,
+  ) => Promise<DeweyCategory>;
+  updateDeweyCategory: (
+    id: number,
+    updates: Partial<DeweyCategory>,
+  ) => Promise<DeweyCategory>;
+  deleteDeweyCategory: (id: number) => Promise<void>;
+
+  // Tag operations with counts
+  getTagsWithCounts: () => Promise<Array<{ name: string; count: number }>>;
 
   // File operations
   uploadFile: (recipeId: string | number, file: File) => Promise<void>;
@@ -66,6 +79,18 @@ interface RecipeStore {
 }
 
 export const useRecipeStore = create<RecipeStore>((set, get) => ({
+  addDeweyCategory: async (category) => {
+    try {
+      const newCategory = await RecipeDB.addDeweyCategory(category);
+      const { deweyCategories } = get();
+      set({ deweyCategories: [...deweyCategories, newCategory] });
+      return newCategory;
+    } catch (error) {
+      console.error('Failed to add Dewey category:', error);
+      set({ error: 'Failed to add Dewey category' });
+      throw error;
+    }
+  },
   addRecipe: async (recipe) => {
     set({ error: null, loading: true });
     try {
@@ -100,6 +125,19 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 
   // Utility
   clearError: () => set({ error: null }),
+
+  deleteDeweyCategory: async (id) => {
+    try {
+      await RecipeDB.deleteDeweyCategory(id);
+      const { deweyCategories } = get();
+      const filteredCategories = deweyCategories.filter((cat) => cat.id !== id);
+      set({ deweyCategories: filteredCategories });
+    } catch (error) {
+      console.error('Failed to delete Dewey category:', error);
+      set({ error: 'Failed to delete Dewey category' });
+      throw error;
+    }
+  },
 
   deleteFile: async (fileId, recipeId) => {
     try {
@@ -152,6 +190,26 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
   },
   error: null,
 
+  getAllRecipesForExport: async () => {
+    try {
+      return await RecipeDB.getAllRecipes();
+    } catch (error) {
+      console.error('Failed to get all recipes for export:', error);
+      set({ error: 'Failed to get all recipes for export' });
+      throw error;
+    }
+  },
+
+  getNextDeweySequence: async (baseCode) => {
+    try {
+      return await RecipeDB.getNextDeweySequence(baseCode);
+    } catch (error) {
+      console.error('Failed to get next Dewey sequence:', error);
+      set({ error: 'Failed to get next Dewey sequence' });
+      throw error;
+    }
+  },
+
   getNextRecipe: async (currentId) => {
     try {
       return await RecipeDB.getNextRecipe(currentId);
@@ -181,6 +239,17 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
     } catch (error) {
       console.error('Failed to get recipe:', error);
       set({ error: 'Failed to load recipe', loading: false });
+      throw error;
+    }
+  },
+
+  // Tag operations with counts
+  getTagsWithCounts: async () => {
+    try {
+      return await RecipeDB.getTagsWithCounts();
+    } catch (error) {
+      console.error('Failed to get tags with counts:', error);
+      set({ error: 'Failed to get tags with counts' });
       throw error;
     }
   },
@@ -256,6 +325,22 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
     get().loadRecipes(get().searchTerm, tags);
   },
   tags: [],
+
+  updateDeweyCategory: async (id, updates) => {
+    try {
+      const updatedCategory = await RecipeDB.updateDeweyCategory(id, updates);
+      const { deweyCategories } = get();
+      const updatedCategories = deweyCategories.map((cat) =>
+        cat.id === id ? updatedCategory : cat,
+      );
+      set({ deweyCategories: updatedCategories });
+      return updatedCategory;
+    } catch (error) {
+      console.error('Failed to update Dewey category:', error);
+      set({ error: 'Failed to update Dewey category' });
+      throw error;
+    }
+  },
 
   updateRecipe: async (id, updates) => {
     try {

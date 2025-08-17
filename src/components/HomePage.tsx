@@ -25,6 +25,7 @@ export function HomePage() {
     deleteRecipe,
     removeTagFromRecipe,
     updateRecipeRating,
+    getAllRecipesForExport,
   } = useRecipeStore();
 
   // Update URL params when search state changes
@@ -87,8 +88,7 @@ export function HomePage() {
   const handleDownloadCSV = async () => {
     try {
       // Always get all recipes for CSV export, not just filtered ones
-      const { RecipeDB } = await import('@/lib/database');
-      const allRecipes = await RecipeDB.getAllRecipes();
+      const allRecipes = await getAllRecipesForExport();
 
       // Create CSV headers
       const headers = [
