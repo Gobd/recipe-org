@@ -2,8 +2,7 @@ import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DeweySelector } from '@/components/DeweySelector';
 import { Button } from '@/components/ui/button';
-import { RecipeDB } from '@/lib/database';
-import type { DeweyCategory } from '@/types/recipe';
+import { useRecipeStore } from '@/store/recipeStore';
 
 interface DeweyAutoSelectorProps {
   onSelect: (deweyCode: string) => void;
@@ -14,33 +13,26 @@ export function DeweyAutoSelector({
   onSelect,
   selectedCode,
 }: DeweyAutoSelectorProps) {
-  const [deweyCategories, setDeweyCategories] = useState<DeweyCategory[]>([]);
   const [selectedBaseCode, setSelectedBaseCode] = useState<string>('');
   const [nextSequence, setNextSequence] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadDeweyCategories): suppress dependency loadDeweyCategories
+  const {
+    deweyCategories,
+    loadDeweyCategories,
+    getNextDeweySequence,
+    loading,
+  } = useRecipeStore();
+
   useEffect(() => {
     loadDeweyCategories();
-  }, []);
+  }, [loadDeweyCategories]);
 
   useEffect(() => {
     if (selectedCode) {
       setSelectedBaseCode(selectedCode);
     }
   }, [selectedCode]);
-
-  const loadDeweyCategories = async () => {
-    try {
-      const categories = await RecipeDB.getAllDeweyCategories();
-      setDeweyCategories(categories);
-    } catch (error) {
-      console.error('Failed to load Dewey categories:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBaseCodeSelect = async (deweyCode: string) => {
     setSelectedBaseCode(deweyCode);
@@ -59,7 +51,7 @@ export function DeweyAutoSelector({
         // This is a leaf node and at level 4 or higher, we can generate a sequence
         try {
           setIsGenerating(true);
-          const sequence = await RecipeDB.getNextDeweySequence(deweyCode);
+          const sequence = await getNextDeweySequence(deweyCode);
           setNextSequence(sequence);
         } catch (error) {
           console.error('Failed to get next sequence:', error);

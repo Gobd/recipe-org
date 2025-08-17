@@ -8,7 +8,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { DeweyAutoSelector } from '@/components/DeweyAutoSelector';
 import { TagInput } from '@/components/TagInput';
@@ -17,12 +17,33 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StarRating } from '@/components/ui/star-rating';
-import { RecipeDB } from '@/lib/database';
-import type { DeweyCategory, Recipe } from '@/types/recipe';
+import { useRecipeStore } from '@/store/recipeStore';
+import type { Recipe } from '@/types/recipe';
 
 export function RecipePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  // Zustand store
+  const {
+    tags: availableTags,
+    deweyCategories,
+    loading,
+    error,
+    getRecipeById,
+    getNextRecipe,
+    getPreviousRecipe,
+    updateRecipe,
+    deleteRecipe,
+    loadTags,
+    loadDeweyCategories,
+    uploadFile,
+    deleteFile,
+    downloadFile,
+    clearError,
+  } = useRecipeStore();
+
+  // Local component state for form inputs and UI state
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [recipeName, setRecipeName] = useState('');
   const [recipePage, setRecipePage] = useState('');
@@ -33,34 +54,17 @@ export function RecipePage() {
   );
   const [tags, setTags] = useState<string[]>([]);
   const [deweyDecimal, setDeweyDecimal] = useState('');
-  const [deweyCategories, setDeweyCategories] = useState<DeweyCategory[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [nextRecipe, setNextRecipe] = useState<Recipe | null>(null);
   const [previousRecipe, setPreviousRecipe] = useState<Recipe | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipe): suppress dependency loadRecipe
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadAvailableTags): suppress dependency loadAvailableTags
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadNavigation): suppress dependency loadNavigation
-  // biome-ignore lint/correctness/useExhaustiveDependencies(id): suppress dependency id
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadDeweyCategories): suppress dependency loadDeweyCategories
-  useEffect(() => {
-    loadRecipe();
-    loadAvailableTags();
-    loadNavigation();
-    loadDeweyCategories();
-  }, [id]);
-
-  const loadRecipe = async () => {
+  const loadRecipe = useCallback(async () => {
     if (!id) return;
 
     try {
-      setLoading(true);
-      const recipeData = await RecipeDB.getRecipeById(id);
+      const recipeData = await getRecipeById(id);
       if (recipeData) {
         setRecipe(recipeData);
         setRecipeName(recipeData.name);
@@ -70,47 +74,43 @@ export function RecipePage() {
         setRecipeRating(recipeData.rating);
         setTags(recipeData.tags);
         setDeweyDecimal(recipeData.deweyDecimal || '');
-      } else {
-        setError('Recipe not found');
       }
     } catch (error) {
       console.error('Failed to load recipe:', error);
-      setError('Failed to load recipe');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [id, getRecipeById]);
 
-  const loadAvailableTags = async () => {
-    try {
-      const tagsData = await RecipeDB.getAllTags();
-      setAvailableTags(tagsData);
-    } catch (error) {
-      console.error('Failed to load tags:', error);
-    }
-  };
-
-  const loadNavigation = async () => {
+  const loadNavigation = useCallback(async () => {
     if (!id) return;
 
     try {
-      const next = await RecipeDB.getNextRecipe(id);
-      const previous = await RecipeDB.getPreviousRecipe(id);
+      const [next, previous] = await Promise.all([
+        getNextRecipe(id),
+        getPreviousRecipe(id),
+      ]);
       setNextRecipe(next);
       setPreviousRecipe(previous);
     } catch (error) {
       console.error('Failed to load navigation:', error);
     }
-  };
+  }, [id, getNextRecipe, getPreviousRecipe]);
 
-  const loadDeweyCategories = async () => {
-    try {
-      const categories = await RecipeDB.getAllDeweyCategories();
-      setDeweyCategories(categories);
-    } catch (error) {
-      console.error('Failed to load Dewey categories:', error);
+  useEffect(() => {
+    if (id) {
+      loadRecipe();
+      loadNavigation();
+      loadTags();
+      loadDeweyCategories();
+      clearError();
     }
-  };
+  }, [
+    id,
+    loadTags,
+    loadDeweyCategories,
+    clearError,
+    loadRecipe,
+    loadNavigation,
+  ]);
 
   // Generate hierarchical Dewey tags from a Dewey code
   const getDeweyHierarchyTags = (deweyCode: string): string[] => {
@@ -218,11 +218,11 @@ export function RecipePage() {
         updates.notes = recipeNotes;
       }
 
-      const updatedRecipe = await RecipeDB.updateRecipe(id, updates);
-      setRecipe(updatedRecipe);
+      await updateRecipe(id, updates);
+      // Reload the recipe to get the updated data
+      await loadRecipe();
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      setError('Failed to save recipe');
     } finally {
       setSaving(false);
     }
@@ -235,14 +235,11 @@ export function RecipePage() {
 
     // Auto-save tags immediately
     try {
-      const updatedRecipe = await RecipeDB.updateRecipe(id, {
-        tags: newTags,
-      });
-      setRecipe(updatedRecipe);
-      loadAvailableTags(); // Refresh available tags in case new ones were added
+      await updateRecipe(id, { tags: newTags });
+      setRecipe((prev) => (prev ? { ...prev, tags: newTags } : null));
+      loadTags(); // Refresh available tags in case new ones were added
     } catch (error) {
       console.error('Failed to save tags:', error);
-      setError('Failed to save tags');
     }
   };
 
@@ -253,13 +250,10 @@ export function RecipePage() {
 
     // Auto-save rating immediately
     try {
-      const updatedRecipe = await RecipeDB.updateRecipe(id, {
-        rating: newRating,
-      });
-      setRecipe(updatedRecipe);
+      await updateRecipe(id, { rating: newRating });
+      setRecipe((prev) => (prev ? { ...prev, rating: newRating } : null));
     } catch (error) {
       console.error('Failed to save rating:', error);
-      setError('Failed to save rating');
     }
   };
 
@@ -285,14 +279,17 @@ export function RecipePage() {
 
     // Auto-save Dewey decimal and tags immediately
     try {
-      const updatedRecipe = await RecipeDB.updateRecipe(id, {
+      await updateRecipe(id, {
         deweyDecimal: newDeweyDecimal,
         tags: updatedTags,
       });
-      setRecipe(updatedRecipe);
+      setRecipe((prev) =>
+        prev
+          ? { ...prev, deweyDecimal: newDeweyDecimal, tags: updatedTags }
+          : null,
+      );
     } catch (error) {
       console.error('Failed to save Dewey decimal:', error);
-      setError('Failed to save Dewey decimal');
     }
   };
 
@@ -305,11 +302,10 @@ export function RecipePage() {
 
     if (confirm(`Are you sure you want to delete "${recipe.name}"?`)) {
       try {
-        await RecipeDB.deleteRecipe(id);
+        await deleteRecipe(id);
         navigate('/');
       } catch (error) {
         console.error('Failed to delete recipe:', error);
-        setError('Failed to delete recipe');
       }
     }
   };
@@ -320,13 +316,12 @@ export function RecipePage() {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        await RecipeDB.uploadFile(id, file);
+        await uploadFile(id, file);
       }
       // Reload recipe to get updated files list
       loadRecipe();
     } catch (error) {
       console.error('Failed to upload file:', error);
-      setError('Failed to upload file');
     } finally {
       setUploading(false);
     }
@@ -336,21 +331,19 @@ export function RecipePage() {
     if (!id) return;
 
     try {
-      await RecipeDB.deleteFile(fileId);
+      await deleteFile(fileId, id);
       // Reload recipe to get updated files list
       loadRecipe();
     } catch (error) {
       console.error('Failed to delete file:', error);
-      setError('Failed to delete file');
     }
   };
 
   const handleFileDownload = async (fileId: number) => {
     try {
-      await RecipeDB.downloadFile(fileId);
+      await downloadFile(fileId);
     } catch (error) {
       console.error('Failed to download file:', error);
-      setError('Failed to download file');
     }
   };
 

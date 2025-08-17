@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { RecipeDB } from '@/lib/database';
+import { useRecipeStore } from '@/store/recipeStore';
 
 export function TagsPage() {
   const navigate = useNavigate();
@@ -12,10 +12,12 @@ export function TagsPage() {
   >([]);
   const [loading, setLoading] = useState(true);
 
+  const { getTagsWithCounts } = useRecipeStore();
+
   useEffect(() => {
     const loadTagsWithCounts = async () => {
       try {
-        const data = await RecipeDB.getTagsWithCounts();
+        const data = await getTagsWithCounts();
         setTagsWithCounts(data);
       } catch (error) {
         console.error('Failed to load tags with counts:', error);
@@ -25,7 +27,7 @@ export function TagsPage() {
     };
 
     loadTagsWithCounts();
-  }, []);
+  }, [getTagsWithCounts]);
 
   const handleTagClick = (tagName: string) => {
     navigate(`/?tags=${encodeURIComponent(tagName)}`);

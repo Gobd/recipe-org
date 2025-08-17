@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RecipeDB } from '@/lib/database';
+import { useRecipeStore } from '@/store/recipeStore';
 import type { DeweyCategory } from '@/types/recipe';
 
 interface CategoryFormData {
@@ -27,9 +27,17 @@ interface CategoryFormData {
 }
 
 export function DeweyAdminPage() {
-  const [categories, setCategories] = useState<DeweyCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    deweyCategories: categories,
+    loading,
+    error,
+    loadDeweyCategories,
+    addDeweyCategory,
+    updateDeweyCategory,
+    deleteDeweyCategory,
+    setError,
+    clearError,
+  } = useRecipeStore();
   const [editingCategory, setEditingCategory] = useState<DeweyCategory | null>(
     null,
   );
@@ -45,39 +53,23 @@ export function DeweyAdminPage() {
     parentCode: '',
   });
 
-  const loadCategories = async () => {
-    try {
-      setLoading(true);
-      const categoriesData = await RecipeDB.getAllDeweyCategories();
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-      setError('Failed to load categories');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadCategories): suppress dependency loadCategories
   useEffect(() => {
-    loadCategories();
-  }, []);
+    loadDeweyCategories();
+  }, [loadDeweyCategories]);
 
   const handleAddCategory = async () => {
     try {
-      const newCategory = await RecipeDB.addDeweyCategory({
+      await addDeweyCategory({
         deweyCode: formData.deweyCode,
         isActive: formData.isActive,
         level: formData.level,
         name: formData.name,
         parentCode: formData.parentCode || undefined,
       });
-      setCategories([...categories, newCategory]);
       setShowAddForm(false);
       resetForm();
     } catch (error) {
       console.error('Failed to add category:', error);
-      setError('Failed to add category');
     }
   };
 
@@ -85,26 +77,17 @@ export function DeweyAdminPage() {
     if (!editingCategory) return;
 
     try {
-      const updatedCategory = await RecipeDB.updateDeweyCategory(
-        editingCategory.id,
-        {
-          deweyCode: formData.deweyCode,
-          isActive: formData.isActive,
-          level: formData.level,
-          name: formData.name,
-          parentCode: formData.parentCode || undefined,
-        },
-      );
-      setCategories(
-        categories.map((cat) =>
-          cat.id === editingCategory.id ? updatedCategory : cat,
-        ),
-      );
+      await updateDeweyCategory(editingCategory.id, {
+        deweyCode: formData.deweyCode,
+        isActive: formData.isActive,
+        level: formData.level,
+        name: formData.name,
+        parentCode: formData.parentCode || undefined,
+      });
       setEditingCategory(null);
       resetForm();
     } catch (error) {
       console.error('Failed to update category:', error);
-      setError('Failed to update category');
     }
   };
 
@@ -129,11 +112,9 @@ export function DeweyAdminPage() {
     }
 
     try {
-      await RecipeDB.deleteDeweyCategory(category.id);
-      setCategories(categories.filter((cat) => cat.id !== category.id));
+      await deleteDeweyCategory(category.id);
     } catch (error) {
       console.error('Failed to delete category:', error);
-      setError('Failed to delete category');
     }
   };
 
@@ -147,18 +128,13 @@ export function DeweyAdminPage() {
     }
 
     try {
-      setLoading(true);
       // Delete all categories
       for (const category of categories) {
-        await RecipeDB.deleteDeweyCategory(category.id);
+        await deleteDeweyCategory(category.id);
       }
-      setCategories([]);
       alert('All categories have been deleted.');
     } catch (error) {
       console.error('Failed to clear categories:', error);
-      setError('Failed to clear categories');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -227,7 +203,6 @@ export function DeweyAdminPage() {
       }
 
       try {
-        setLoading(true);
         const text = await file.text();
         const lines = text.split('\n').filter((line) => line.trim());
 
@@ -270,7 +245,7 @@ export function DeweyAdminPage() {
               const parentCode = getDeweyParentCode(code);
 
               // Create the category
-              const newCategory = await RecipeDB.addDeweyCategory({
+              const newCategory = await addDeweyCategory({
                 deweyCode: code,
                 isActive: true,
                 level,
@@ -279,7 +254,6 @@ export function DeweyAdminPage() {
               });
 
               categoriesMap.set(code, newCategory);
-              setCategories((prev) => [...prev, newCategory]);
               importedCount++;
             }
           } catch (error) {
@@ -297,16 +271,12 @@ export function DeweyAdminPage() {
         } else {
           alert(`Successfully imported ${importedCount} categories!`);
         }
-
-        // Reload categories to get fresh data
-        await loadCategories();
       } catch (error) {
         console.error('Failed to import CSV:', error);
         setError(
           `Failed to import CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       } finally {
-        setLoading(false);
         document.body.removeChild(fileInput);
       }
     };
@@ -669,7 +639,7 @@ export function DeweyAdminPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-800">{error}</p>
           <Button
-            onClick={() => setError(null)}
+            onClick={clearError}
             variant="outline"
             size="sm"
             className="mt-2"

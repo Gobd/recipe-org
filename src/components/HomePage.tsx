@@ -1,23 +1,47 @@
 import { Download, Shuffle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RecipeForm } from '@/components/RecipeForm';
 import { RecipeList } from '@/components/RecipeList';
 import { SearchBar } from '@/components/SearchBar';
+import {
+  DownloadButtonSkeleton,
+  RecipeFormSkeleton,
+  RecipeHeaderSkeleton,
+  RecipeListSkeleton,
+  SearchBarSkeleton,
+} from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
-import { RecipeDB } from '@/lib/database';
+import { useRecipeStore } from '@/store/recipeStore';
 import type { Recipe } from '@/types/recipe';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
-  const loadRecipes = async (searchTerm: string, selectedTags: string[]) => {
-    // Update URL params to reflect current search state
+  // Zustand store
+  const {
+    recipes,
+    tags: availableTags,
+    loading,
+    searchTerm,
+    selectedTags,
+    setSearchTerm,
+    setSelectedTags,
+    loadRecipes,
+    addRecipe,
+    deleteRecipe,
+    removeTagFromRecipe,
+    updateRecipeRating,
+    getAllRecipesForExport,
+  } = useRecipeStore();
+
+  // Show skeletons until we have initial data loaded (for LCP/layout shift optimization)
+  // Only show skeletons if we're loading OR if we haven't loaded any tags yet (indicates initial load)
+  const showSkeletons = loading || availableTags.length === 0;
+
+  // Update URL params when search state changes
+  useEffect(() => {
     const newParams = new URLSearchParams();
     if (searchTerm) {
       newParams.set('search', searchTerm);
@@ -26,86 +50,40 @@ export function HomePage() {
       newParams.set('tags', selectedTags.join(','));
     }
     setSearchParams(newParams);
+  }, [searchTerm, selectedTags, setSearchParams]);
 
-    try {
-      const [recipesData, tagsData] = await Promise.all([
-        searchTerm || selectedTags.length > 0
-          ? RecipeDB.searchRecipes(searchTerm, selectedTags)
-          : RecipeDB.getAllRecipes(),
-        RecipeDB.getAllTags(),
-      ]);
-      setRecipes(recipesData);
-      setAvailableTags(tagsData);
-    } catch (error) {
-      console.error('Failed to load recipes:', error);
-    }
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies(loadRecipes): suppress dependency loadRecipes
+  // Initialize from URL params on mount
   useEffect(() => {
     const tagsParam = searchParams.get('tags');
     const searchParam = searchParams.get('search');
 
     if (tagsParam || searchParam) {
       const tags = tagsParam ? tagsParam.split(',') : [];
-      setSelectedTags(tags);
-      setSearchTerm(searchParam || '');
-      loadRecipes(searchParam || '', tags);
+      const search = searchParam || '';
+
+      // Set store state to match URL without triggering search yet
+      useRecipeStore.setState({
+        searchTerm: search,
+        selectedTags: tags,
+      });
+
+      loadRecipes(search, tags);
     } else {
       loadRecipes('', []);
     }
-  }, [searchParams]);
+  }, [loadRecipes, searchParams]);
 
   const handleAddRecipe = async (
     recipe: Omit<Recipe, 'id' | 'createdAt'>,
     shouldNavigate?: boolean,
   ) => {
     try {
-      const newRecipe = await RecipeDB.addRecipe(recipe);
+      const newRecipe = await addRecipe(recipe);
       if (shouldNavigate) {
         navigate(`/recipe/${newRecipe.id}`);
-      } else {
-        loadRecipes(searchTerm, selectedTags);
       }
     } catch (error) {
       console.error('Failed to add recipe:', error);
-    }
-  };
-
-  const handleDeleteRecipe = async (id: string | number) => {
-    try {
-      await RecipeDB.deleteRecipe(id);
-      loadRecipes(searchTerm, selectedTags);
-    } catch (error) {
-      console.error('Failed to delete recipe:', error);
-    }
-  };
-
-  const handleRemoveTag = async (
-    recipeId: string | number,
-    tagToRemove: string,
-  ) => {
-    try {
-      const recipe = recipes.find((r) => r.id === recipeId);
-      if (recipe) {
-        const newTags = recipe.tags.filter((tag) => tag !== tagToRemove);
-        await RecipeDB.updateRecipe(recipeId, { tags: newTags });
-        loadRecipes(searchTerm, selectedTags);
-      }
-    } catch (error) {
-      console.error('Failed to remove tag:', error);
-    }
-  };
-
-  const handleRatingChange = async (
-    recipeId: string | number,
-    rating: number,
-  ) => {
-    try {
-      await RecipeDB.updateRecipe(recipeId, { rating });
-      loadRecipes(searchTerm, selectedTags);
-    } catch (error) {
-      console.error('Failed to update rating:', error);
     }
   };
 
@@ -121,8 +99,8 @@ export function HomePage() {
 
   const handleDownloadCSV = async () => {
     try {
-      // Get all recipes for CSV export
-      const allRecipes = await RecipeDB.getAllRecipes();
+      // Always get all recipes for CSV export, not just filtered ones
+      const allRecipes = await getAllRecipesForExport();
 
       // Create CSV headers
       const headers = [
@@ -169,69 +147,78 @@ export function HomePage() {
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
-      <RecipeForm availableTags={availableTags} onAddRecipe={handleAddRecipe} />
+      {showSkeletons ? (
+        <>
+          <RecipeFormSkeleton />
+          <SearchBarSkeleton />
+          <RecipeHeaderSkeleton />
+          <RecipeListSkeleton count={5} />
+          <DownloadButtonSkeleton />
+        </>
+      ) : (
+        <>
+          <RecipeForm
+            availableTags={availableTags}
+            onAddRecipe={handleAddRecipe}
+          />
 
-      <SearchBar
-        searchTerm={searchTerm}
-        selectedTags={selectedTags}
-        availableTags={availableTags}
-        onSearchTermChange={(t) => {
-          setSearchTerm(t);
-          loadRecipes(t, selectedTags);
-        }}
-        onSelectedTagsChange={(t) => {
-          setSelectedTags(t);
-          loadRecipes(searchTerm, t);
-        }}
-      />
+          <SearchBar
+            searchTerm={searchTerm}
+            selectedTags={selectedTags}
+            availableTags={availableTags}
+            onSearchTermChange={setSearchTerm}
+            onSelectedTagsChange={setSelectedTags}
+          />
 
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">
-          {searchTerm || selectedTags.length > 0
-            ? `Found ${recipes.length} recipe${recipes.length !== 1 ? 's' : ''}`
-            : `${recipes.length} recipe${recipes.length !== 1 ? 's' : ''}`}
-        </h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {searchTerm || selectedTags.length > 0
+                ? `Found ${recipes.length} recipe${recipes.length !== 1 ? 's' : ''}`
+                : `${recipes.length} recipe${recipes.length !== 1 ? 's' : ''}`}
+            </h2>
 
-        <Button
-          onClick={handleRandomRecipe}
-          disabled={recipes.length === 0}
-          variant="outline"
-          className="flex items-center gap-2"
-        >
-          <Shuffle className="w-4 h-4" />
-          Random Recipe
-        </Button>
-      </div>
+            <Button
+              onClick={handleRandomRecipe}
+              disabled={recipes.length === 0}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Shuffle className="w-4 h-4" />
+              Random Recipe
+            </Button>
+          </div>
 
-      <RecipeList
-        recipes={recipes}
-        onDeleteRecipe={handleDeleteRecipe}
-        onRemoveTag={handleRemoveTag}
-        onRatingChange={handleRatingChange}
-      />
+          <RecipeList
+            recipes={recipes}
+            onDeleteRecipe={deleteRecipe}
+            onRemoveTag={removeTagFromRecipe}
+            onRatingChange={updateRecipeRating}
+          />
 
-      <div className="mt-8 text-center">
-        <Button
-          onClick={handleDownloadCSV}
-          variant="outline"
-          className="flex items-center gap-2 mx-auto"
-        >
-          <Download className="w-4 h-4" />
-          Download Recipe Info (CSV)
-        </Button>
+          <div className="mt-8 text-center">
+            <Button
+              onClick={handleDownloadCSV}
+              variant="outline"
+              className="flex items-center gap-2 mx-auto"
+            >
+              <Download className="w-4 h-4" />
+              Download Recipe Info (CSV)
+            </Button>
 
-        <p className="text-xs text-gray-500 mt-4">
-          Favicon from{' '}
-          <a
-            href="https://www.flaticon.com/authors/photo3idea-studio"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-gray-700"
-          >
-            photo3idea-studio
-          </a>
-        </p>
-      </div>
+            <p className="text-xs text-gray-500 mt-4">
+              Favicon from{' '}
+              <a
+                href="https://www.flaticon.com/authors/photo3idea-studio"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-gray-700"
+              >
+                photo3idea-studio
+              </a>
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
