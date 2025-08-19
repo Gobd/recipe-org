@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { DeweyCategory } from '@/types/recipe';
 
@@ -8,6 +8,45 @@ interface DeweySelectorProps {
   selectedCode?: string;
   deweyCategories: DeweyCategory[];
 }
+
+// Skeleton component for when calculations are loading
+const DeweySkeletonContent = () => (
+  <div className="w-full space-y-4">
+    {/* Dewey selector label and breadcrumb area */}
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="h-5 w-56 bg-gray-200 rounded animate-pulse" />
+      </div>
+
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-6 w-12 bg-gray-200 rounded animate-pulse" />
+      </div>
+    </div>
+
+    {/* Scrollable category container - matches max-h-80 */}
+    <div className="border rounded-lg max-h-80 overflow-y-auto bg-white">
+      <div className="divide-y">
+        {/* 6 category items to match real content */}
+        {Array.from({ length: 6 }, (_, index) => `dewey-skeleton-${index}`).map(
+          (key) => (
+            <div key={key} className="flex items-center justify-between p-3">
+              <div className="flex-1 flex items-center gap-3">
+                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-16 bg-gray-200 rounded animate-pulse" />
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+    </div>
+  </div>
+);
 
 export function DeweySelector({
   onSelect,
@@ -19,6 +58,34 @@ export function DeweySelector({
     DeweyCategory[]
   >([]);
 
+  // Memoize expensive calculations to prevent re-computation on every render
+  const categoryMaps = useMemo(() => {
+    const categoryByCode = new Map<string, DeweyCategory>();
+    const hasChildrenMap = new Map<string, boolean>();
+    const subcountMap = new Map<string, number>();
+
+    // Build lookup map
+    for (const category of deweyCategories) {
+      categoryByCode.set(category.deweyCode, category);
+    }
+
+    // Calculate children and subcounts
+    for (const category of deweyCategories) {
+      const children = deweyCategories.filter(
+        (cat) => cat.parentCode === category.deweyCode && cat.isActive,
+      );
+      hasChildrenMap.set(category.deweyCode, children.length > 0);
+      subcountMap.set(category.deweyCode, children.length);
+    }
+
+    return { categoryByCode, hasChildrenMap, subcountMap };
+  }, [deweyCategories]);
+
+  // Track if we're still processing calculations or waiting for categories to load
+  const isCalculating =
+    deweyCategories.length === 0 ||
+    (deweyCategories.length > 0 && categoryMaps.categoryByCode.size === 0);
+
   // Initialize or update the current path based on selected code
   useEffect(() => {
     if (selectedCode) {
@@ -27,9 +94,7 @@ export function DeweySelector({
       let currentCode = selectedCode;
 
       while (currentCode) {
-        const category = deweyCategories.find(
-          (cat) => cat.deweyCode === currentCode,
-        );
+        const category = categoryMaps.categoryByCode.get(currentCode);
         if (category) {
           path.unshift(category);
           currentCode = category.parentCode || '';
@@ -42,7 +107,7 @@ export function DeweySelector({
     } else {
       setCurrentPath([]);
     }
-  }, [selectedCode, deweyCategories]);
+  }, [selectedCode, categoryMaps]);
 
   // Update available categories based on current path
   useEffect(() => {
@@ -68,9 +133,8 @@ export function DeweySelector({
 
   const handleCategorySelect = (category: DeweyCategory) => {
     // Check if this category has children
-    const hasChildren = deweyCategories.some(
-      (cat) => cat.parentCode === category.deweyCode && cat.isActive,
-    );
+    const hasChildren =
+      categoryMaps.hasChildrenMap.get(category.deweyCode) || false;
 
     if (hasChildren) {
       // Navigate to this level to show children
@@ -108,10 +172,13 @@ export function DeweySelector({
   };
 
   const getCategoryHasChildren = (category: DeweyCategory) => {
-    return deweyCategories.some(
-      (cat) => cat.parentCode === category.deweyCode && cat.isActive,
-    );
+    return categoryMaps.hasChildrenMap.get(category.deweyCode) || false;
   };
+
+  // Show skeleton while calculating
+  if (isCalculating) {
+    return <DeweySkeletonContent />;
+  }
 
   return (
     <div className="w-full">
@@ -170,14 +237,10 @@ export function DeweySelector({
           <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2 mb-3">
             <span className="font-medium">Selected: </span>
             <span className="font-mono">{selectedCode}</span>
-            {deweyCategories.find((cat) => cat.deweyCode === selectedCode) && (
+            {categoryMaps.categoryByCode.get(selectedCode) && (
               <span>
                 {' '}
-                -{' '}
-                {
-                  deweyCategories.find((cat) => cat.deweyCode === selectedCode)
-                    ?.name
-                }
+                - {categoryMaps.categoryByCode.get(selectedCode)?.name}
               </span>
             )}
           </div>
@@ -209,13 +272,8 @@ export function DeweySelector({
                       </span>
                       {hasChildren && (
                         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                          {
-                            deweyCategories.filter(
-                              (cat) =>
-                                cat.parentCode === category.deweyCode &&
-                                cat.isActive,
-                            ).length
-                          }{' '}
+                          {categoryMaps.subcountMap.get(category.deweyCode) ||
+                            0}{' '}
                           subcategories
                         </span>
                       )}

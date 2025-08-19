@@ -53,6 +53,12 @@ export function RecipeList({
                   </p>
                 )}
 
+                {recipe.deweyDecimal && (
+                  <p className="text-sm text-blue-600 mb-2 font-medium">
+                    📚 Dewey: {recipe.deweyDecimal}
+                  </p>
+                )}
+
                 <div className="flex flex-wrap gap-2 mb-3">
                   {recipe.tags.map((tag) => (
                     <span

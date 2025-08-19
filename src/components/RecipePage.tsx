@@ -446,6 +446,11 @@ export function RecipePage() {
             <p className="text-gray-600">
               Created {recipe.createdAt.toLocaleDateString()}
             </p>
+            {recipe.deweyDecimal && (
+              <p className="text-sm text-blue-600 font-medium">
+                📚 Dewey: {recipe.deweyDecimal}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2">
