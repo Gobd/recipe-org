@@ -207,14 +207,23 @@ export const RecipeDB = {
     const categories =
       await db`SELECT * FROM dewey_categories ORDER BY dewey_code`;
 
-    const result = categories.map((category) => ({
-      deweyCode: category.dewey_code,
-      id: category.id,
-      isActive: category.is_active,
-      level: category.level,
-      name: category.name,
-      parentCode: category.parent_code || undefined,
-    }));
+    const result = categories.map(
+      (category: {
+        dewey_code: string;
+        id: number;
+        is_active: boolean;
+        level: number;
+        name: string;
+        parent_code: string | null;
+      }) => ({
+        deweyCode: category.dewey_code,
+        id: category.id,
+        isActive: category.is_active,
+        level: category.level,
+        name: category.name,
+        parentCode: category.parent_code || undefined,
+      }),
+    );
 
     cache.set(cacheKey, result);
     return result;
@@ -228,24 +237,35 @@ export const RecipeDB = {
     const recipes = await db`SELECT * FROM recipes ORDER BY created_at DESC`;
 
     const result = await Promise.all(
-      recipes.map(async (recipe) => {
-        const tags = await db`SELECT t.name 
+      recipes.map(
+        async (recipe: {
+          id: number;
+          dewey_decimal: string | null;
+          created_at: string;
+          name: string;
+          notes: string | null;
+          page: number | null;
+          rating: number | null;
+          url: string | null;
+        }) => {
+          const tags = await db`SELECT t.name 
                             FROM tags t 
                             JOIN recipe_tags rt ON t.id = rt.tag_id 
                             WHERE rt.recipe_id = ${recipe.id}`;
 
-        return {
-          createdAt: new Date(recipe.created_at),
-          deweyDecimal: recipe.dewey_decimal || undefined,
-          id: recipe.id,
-          name: recipe.name,
-          notes: recipe.notes || undefined,
-          page: recipe.page || undefined,
-          rating: recipe.rating || undefined,
-          tags: tags.map((tag) => tag.name),
-          url: recipe.url || undefined,
-        };
-      }),
+          return {
+            createdAt: new Date(recipe.created_at),
+            deweyDecimal: recipe.dewey_decimal || undefined,
+            id: recipe.id,
+            name: recipe.name,
+            notes: recipe.notes || undefined,
+            page: recipe.page || undefined,
+            rating: recipe.rating || undefined,
+            tags: tags.map((tag: { name: string }) => tag.name),
+            url: recipe.url || undefined,
+          };
+        },
+      ),
     );
 
     cache.set(cacheKey, result);
@@ -259,7 +279,7 @@ export const RecipeDB = {
     }
 
     const rows = await db`SELECT name FROM tags ORDER BY name`;
-    const result = rows.map((row) => row.name);
+    const result = rows.map((row: { name: string }) => row.name);
 
     cache.set(cacheKey, result);
     return result;
@@ -300,7 +320,7 @@ export const RecipeDB = {
     const id = parseInt(recipeId.toString(), 10);
     const files =
       await db`SELECT id, filename FROM recipe_files WHERE recipe_id = ${id} ORDER BY created_at DESC`;
-    return files.map((file) => ({
+    return files.map((file: { id: number; filename: string }) => ({
       filename: file.filename,
       id: file.id,
     }));
@@ -348,7 +368,7 @@ export const RecipeDB = {
       notes: recipe.notes || undefined,
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
-      tags: tags.map((tag) => tag.name),
+      tags: tags.map((tag: { name: string }) => tag.name),
     };
   },
 
@@ -377,7 +397,7 @@ export const RecipeDB = {
       notes: recipe.notes || undefined,
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
-      tags: tags.map((tag) => tag.name),
+      tags: tags.map((tag: { name: string }) => tag.name),
     };
   },
 
@@ -398,7 +418,7 @@ export const RecipeDB = {
     return {
       createdAt: new Date(recipe.created_at),
       deweyDecimal: recipe.dewey_decimal || undefined,
-      files: files.map((file) => ({
+      files: files.map((file: { id: number; filename: string }) => ({
         filename: file.filename,
         id: file.id,
       })),
@@ -407,7 +427,7 @@ export const RecipeDB = {
       notes: recipe.notes || undefined,
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
-      tags: tags.map((tag) => tag.name),
+      tags: tags.map((tag: { name: string }) => tag.name),
       url: recipe.url || undefined,
     };
   },
@@ -417,24 +437,35 @@ export const RecipeDB = {
       await db`SELECT * FROM recipes WHERE dewey_decimal = ${deweyCode} ORDER BY created_at DESC`;
 
     return await Promise.all(
-      recipes.map(async (recipe) => {
-        const tags = await db`SELECT t.name 
+      recipes.map(
+        async (recipe: {
+          id: number;
+          dewey_decimal: string | null;
+          created_at: string;
+          name: string;
+          notes: string | null;
+          page: number | null;
+          rating: number | null;
+          url: string | null;
+        }) => {
+          const tags = await db`SELECT t.name 
                             FROM tags t 
                             JOIN recipe_tags rt ON t.id = rt.tag_id 
                             WHERE rt.recipe_id = ${recipe.id}`;
 
-        return {
-          createdAt: new Date(recipe.created_at),
-          deweyDecimal: recipe.dewey_decimal || undefined,
-          id: recipe.id,
-          name: recipe.name,
-          notes: recipe.notes || undefined,
-          page: recipe.page || undefined,
-          rating: recipe.rating || undefined,
-          tags: tags.map((tag) => tag.name),
-          url: recipe.url || undefined,
-        };
-      }),
+          return {
+            createdAt: new Date(recipe.created_at),
+            deweyDecimal: recipe.dewey_decimal || undefined,
+            id: recipe.id,
+            name: recipe.name,
+            notes: recipe.notes || undefined,
+            page: recipe.page || undefined,
+            rating: recipe.rating || undefined,
+            tags: tags.map((tag: { name: string }) => tag.name),
+            url: recipe.url || undefined,
+          };
+        },
+      ),
     );
   },
 
@@ -449,7 +480,10 @@ export const RecipeDB = {
                           LEFT JOIN recipe_tags rt ON t.id = rt.tag_id
                           GROUP BY t.id, t.name
                           ORDER BY count DESC, t.name ASC`;
-    const result = rows.map((row) => ({ count: row.count, name: row.name }));
+    const result = rows.map((row: { count: number; name: string }) => ({
+      count: row.count,
+      name: row.name,
+    }));
 
     cache.set(cacheKey, result);
     return result;
@@ -495,7 +529,7 @@ export const RecipeDB = {
                               FROM tags t 
                               JOIN recipe_tags rt ON t.id = rt.tag_id 
                               WHERE rt.recipe_id = ${recipe.id}`;
-        const hasMatchingTag = tags.some((tag) =>
+        const hasMatchingTag = tags.some((tag: { name: string }) =>
           tag.name.toLowerCase().includes(searchTerm.toLowerCase()),
         );
         if (hasMatchingTag) {
@@ -520,7 +554,7 @@ export const RecipeDB = {
           notes: recipe.notes || undefined,
           page: recipe.page || undefined,
           rating: recipe.rating || undefined,
-          tags: tags.map((tag) => tag.name),
+          tags: tags.map((tag: { name: string }) => tag.name),
           url: recipe.url || undefined,
         };
       }),
@@ -648,7 +682,7 @@ export const RecipeDB = {
       notes: recipe.notes || undefined,
       page: recipe.page || undefined,
       rating: recipe.rating || undefined,
-      tags: tags.map((tag) => tag.name),
+      tags: tags.map((tag: { name: string }) => tag.name),
       url: recipe.url || undefined,
     };
   },
