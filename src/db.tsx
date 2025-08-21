@@ -496,19 +496,18 @@ export const RecipeDB = {
     let recipes: any[] = [];
 
     if (selectedTags.length > 0) {
-      // For template syntax with IN clause, we need to pass the array directly
-      recipes = await db`
+      recipes = await db.unsafe(`
         SELECT r.* FROM recipes r
         WHERE r.id IN (
           SELECT rt.recipe_id 
           FROM recipe_tags rt
           JOIN tags t ON rt.tag_id = t.id
-          WHERE t.name = ANY(${selectedTags})
+          WHERE t.name IN (${selectedTags.map(()=>"?").join(", ")})
           GROUP BY rt.recipe_id
-          HAVING COUNT(DISTINCT t.name) = ${selectedTags.length}
+          HAVING COUNT(DISTINCT t.name) = ?
         )
         ORDER BY r.created_at DESC
-      `;
+      `, [...selectedTags, selectedTags.length]);
     } else {
       // Get all recipes
       recipes = await db`SELECT * FROM recipes ORDER BY created_at DESC`;
@@ -539,7 +538,7 @@ export const RecipeDB = {
       recipes = filteredRecipes;
     }
 
-    return await Promise.all(
+    return  Promise.all(
       recipes.map(async (recipe) => {
         const tags = await db`SELECT t.name 
                             FROM tags t 

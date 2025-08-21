@@ -78,7 +78,7 @@ const server = serve({
     '/api/dewey': {
       async GET() {
         try {
-          const categories = RecipeDB.getAllDeweyCategories();
+          const categories = await RecipeDB.getAllDeweyCategories();
           return Response.json(categories);
         } catch (error) {
           console.error('API Error:', error);
@@ -91,7 +91,7 @@ const server = serve({
       async POST(req: Bun.BunRequest) {
         try {
           const category = await req.json();
-          const newCategory = RecipeDB.addDeweyCategory(category);
+          const newCategory = await RecipeDB.addDeweyCategory(category);
           return Response.json(newCategory);
         } catch (error) {
           console.error('API Error:', error);
@@ -121,7 +121,7 @@ const server = serve({
         try {
           const id = parseInt((req.params as any).id, 10);
           const updates = await req.json();
-          const updatedCategory = RecipeDB.updateDeweyCategory(id, updates);
+          const updatedCategory = await RecipeDB.updateDeweyCategory(id, updates);
           return Response.json(updatedCategory);
         } catch (error) {
           console.error('API Error:', error);
@@ -137,7 +137,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const baseCode = (req.params as any).baseCode;
-          const nextSequence = RecipeDB.getNextDeweySequence(baseCode);
+          const nextSequence = await RecipeDB.getNextDeweySequence(baseCode);
           return Response.json({ nextSequence });
         } catch (error) {
           console.error('API Error:', error);
@@ -166,7 +166,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const fileId = (req.params as any).id;
-          const file = RecipeDB.getFileById(fileId);
+          const file = await RecipeDB.getFileById(fileId);
 
           if (!file) {
             return Response.json({ error: 'File not found' }, { status: 404 });
@@ -198,8 +198,8 @@ const server = serve({
 
           const recipes =
             searchTerm || selectedTags.length > 0
-              ? RecipeDB.searchRecipes(searchTerm, selectedTags)
-              : RecipeDB.getAllRecipes();
+              ? await RecipeDB.searchRecipes(searchTerm, selectedTags)
+              : await RecipeDB.getAllRecipes();
 
           return Response.json(recipes);
         } catch (error) {
@@ -214,7 +214,7 @@ const server = serve({
       async POST(req: Bun.BunRequest) {
         try {
           const recipe = await req.json();
-          const newRecipe = RecipeDB.addRecipe(recipe);
+          const newRecipe = await RecipeDB.addRecipe(recipe);
           return Response.json(newRecipe);
         } catch (error) {
           console.error('API Error:', error);
@@ -230,7 +230,7 @@ const server = serve({
       async DELETE(req: Bun.BunRequest) {
         try {
           const id = (req.params as any).id;
-          RecipeDB.deleteRecipe(id);
+          await RecipeDB.deleteRecipe(id);
           return Response.json({ success: true });
         } catch (error) {
           console.error('API Error:', error);
@@ -243,7 +243,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const id = (req.params as any).id;
-          const recipe = RecipeDB.getRecipeById(id);
+          const recipe = await RecipeDB.getRecipeById(id);
           if (recipe) {
             return Response.json(recipe);
           } else {
@@ -265,7 +265,7 @@ const server = serve({
         try {
           const id = (req.params as any).id;
           const updates = await req.json();
-          const updatedRecipe = RecipeDB.updateRecipe(id, updates);
+          const updatedRecipe = await RecipeDB.updateRecipe(id, updates);
           return Response.json(updatedRecipe);
         } catch (error) {
           console.error('API Error:', error);
@@ -292,7 +292,11 @@ const server = serve({
           }
 
           const content = await file.arrayBuffer();
-          const fileRecord = RecipeDB.addFile(recipeId, file.name, content);
+          const fileRecord = await RecipeDB.addFile(
+            recipeId,
+            file.name,
+            content,
+          );
 
           return Response.json(fileRecord);
         } catch (error) {
@@ -309,7 +313,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const id = (req.params as any).id;
-          const nextRecipe = RecipeDB.getNextRecipe(id);
+          const nextRecipe = await RecipeDB.getNextRecipe(id);
           if (nextRecipe) {
             return Response.json(nextRecipe);
           } else {
@@ -329,7 +333,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const id = (req.params as any).id;
-          const previousRecipe = RecipeDB.getPreviousRecipe(id);
+          const previousRecipe = await RecipeDB.getPreviousRecipe(id);
           if (previousRecipe) {
             return Response.json(previousRecipe);
           } else {
@@ -349,7 +353,7 @@ const server = serve({
       async GET(req: Bun.BunRequest) {
         try {
           const deweyCode = decodeURIComponent((req.params as any).deweyCode);
-          const recipes = RecipeDB.getRecipesByDeweyCode(deweyCode);
+          const recipes = await RecipeDB.getRecipesByDeweyCode(deweyCode);
           return Response.json(recipes);
         } catch (error) {
           console.error('API Error:', error);
@@ -493,7 +497,7 @@ const server = serve({
     '/api/tags': {
       async GET() {
         try {
-          const tags = RecipeDB.getAllTags();
+          const tags = await RecipeDB.getAllTags();
           return Response.json(tags);
         } catch (error) {
           console.error('API Error:', error);
@@ -508,7 +512,7 @@ const server = serve({
     '/api/tags/counts': {
       async GET() {
         try {
-          const tagsWithCounts = RecipeDB.getTagsWithCounts();
+          const tagsWithCounts = await RecipeDB.getTagsWithCounts();
           return Response.json(tagsWithCounts);
         } catch (error) {
           console.error('API Error:', error);
