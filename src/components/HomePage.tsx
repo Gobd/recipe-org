@@ -37,7 +37,7 @@ export function HomePage() {
   } = useRecipeStore();
 
   // Show skeletons until we have initial data loaded (for LCP/layout shift optimization)
-  // Only show skeletons if we're loading OR if we haven't loaded any tags yet (indicates initial load)
+  // Only show skeletons for initial loading, not for search operations
   const showSkeletons = loading || availableTags.length === 0;
 
   // Update URL params when search state changes
@@ -67,7 +67,7 @@ export function HomePage() {
         selectedTags: tags,
       });
 
-      loadRecipes(search, tags);
+      loadRecipes(search, tags, true);
     } else {
       loadRecipes('', []);
     }

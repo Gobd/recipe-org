@@ -121,7 +121,10 @@ const server = serve({
         try {
           const id = parseInt((req.params as any).id, 10);
           const updates = await req.json();
-          const updatedCategory = await RecipeDB.updateDeweyCategory(id, updates);
+          const updatedCategory = await RecipeDB.updateDeweyCategory(
+            id,
+            updates,
+          );
           return Response.json(updatedCategory);
         } catch (error) {
           console.error('API Error:', error);

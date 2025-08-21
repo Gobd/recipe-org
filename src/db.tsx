@@ -496,18 +496,21 @@ export const RecipeDB = {
     let recipes: any[] = [];
 
     if (selectedTags.length > 0) {
-      recipes = await db.unsafe(`
+      recipes = await db.unsafe(
+        `
         SELECT r.* FROM recipes r
         WHERE r.id IN (
           SELECT rt.recipe_id 
           FROM recipe_tags rt
           JOIN tags t ON rt.tag_id = t.id
-          WHERE t.name IN (${selectedTags.map(()=>"?").join(", ")})
+          WHERE t.name IN (${selectedTags.map(() => '?').join(', ')})
           GROUP BY rt.recipe_id
           HAVING COUNT(DISTINCT t.name) = ?
         )
         ORDER BY r.created_at DESC
-      `, [...selectedTags, selectedTags.length]);
+      `,
+        [...selectedTags, selectedTags.length],
+      );
     } else {
       // Get all recipes
       recipes = await db`SELECT * FROM recipes ORDER BY created_at DESC`;
@@ -538,7 +541,7 @@ export const RecipeDB = {
       recipes = filteredRecipes;
     }
 
-    return  Promise.all(
+    return Promise.all(
       recipes.map(async (recipe) => {
         const tags = await db`SELECT t.name 
                             FROM tags t 
