@@ -496,21 +496,18 @@ export const RecipeDB = {
     let recipes: any[] = [];
 
     if (selectedTags.length > 0) {
-      recipes = await db.unsafe(
-        `
+      recipes = await db`
         SELECT r.* FROM recipes r
         WHERE r.id IN (
           SELECT rt.recipe_id 
           FROM recipe_tags rt
           JOIN tags t ON rt.tag_id = t.id
-          WHERE t.name IN (${selectedTags.map(() => '?').join(', ')})
+          WHERE t.name IN ${sql(selectedTags)}
           GROUP BY rt.recipe_id
-          HAVING COUNT(DISTINCT t.name) = ?
+          HAVING COUNT(DISTINCT t.name) = ${selectedTags.length}
         )
         ORDER BY r.created_at DESC
-      `,
-        [...selectedTags, selectedTags.length],
-      );
+      `;
     } else {
       // Get all recipes
       recipes = await db`SELECT * FROM recipes ORDER BY created_at DESC`;
