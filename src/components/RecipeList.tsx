@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { StarRating } from '@/components/ui/star-rating';
+import { formatDeweyDecimal } from '@/lib/utils';
 import type { Recipe } from '@/types/recipe';
 
 interface RecipeListProps {
@@ -55,7 +56,7 @@ export function RecipeList({
 
                 {recipe.deweyDecimal && (
                   <p className="text-sm text-blue-600 mb-2 font-medium">
-                    📚 Dewey: {recipe.deweyDecimal}
+                    📚 Dewey: {formatDeweyDecimal(recipe.deweyDecimal)}
                   </p>
                 )}
 

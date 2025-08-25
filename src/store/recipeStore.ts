@@ -8,6 +8,7 @@ interface RecipeStore {
   tags: string[];
   deweyCategories: DeweyCategory[];
   loading: boolean;
+  searching: boolean;
   error: string | null;
   deweyCategoriesLoaded: boolean;
   deweyCategoriesLoading: boolean;
@@ -21,7 +22,11 @@ interface RecipeStore {
   setSelectedTags: (tags: string[]) => void;
 
   // Recipe operations
-  loadRecipes: (searchTerm?: string, selectedTags?: string[]) => Promise<void>;
+  loadRecipes: (
+    searchTerm?: string,
+    selectedTags?: string[],
+    isSearching?: boolean,
+  ) => Promise<void>;
   getAllRecipesForExport: () => Promise<Recipe[]>;
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>) => Promise<Recipe>;
   updateRecipe: (
@@ -286,8 +291,17 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
   loading: false,
 
   // Recipe operations
-  loadRecipes: async (searchTerm = '', selectedTags = []) => {
-    set({ error: null, loading: true });
+  loadRecipes: async (
+    searchTerm = '',
+    selectedTags = [],
+    isSearching = false,
+  ) => {
+    if (isSearching) {
+      set({ error: null, searching: true });
+    } else {
+      set({ error: null, loading: true });
+    }
+
     try {
       const [recipesData, tagsData] = await Promise.all([
         searchTerm || selectedTags.length > 0
@@ -295,10 +309,19 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
           : RecipeDB.getAllRecipes(),
         RecipeDB.getAllTags(),
       ]);
-      set({ loading: false, recipes: recipesData, tags: tagsData });
+
+      if (isSearching) {
+        set({ recipes: recipesData, searching: false, tags: tagsData });
+      } else {
+        set({ loading: false, recipes: recipesData, tags: tagsData });
+      }
     } catch (error) {
       console.error('Failed to load recipes:', error);
-      set({ error: 'Failed to load recipes', loading: false });
+      if (isSearching) {
+        set({ error: 'Failed to load recipes', searching: false });
+      } else {
+        set({ error: 'Failed to load recipes', loading: false });
+      }
     }
   },
 
@@ -329,6 +352,7 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
       throw error;
     }
   },
+  searching: false,
   searchTerm: '',
   selectedTags: [],
   setError: (error) => set({ error }),
@@ -336,12 +360,12 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
   // Search actions
   setSearchTerm: (term) => {
     set({ searchTerm: term });
-    get().loadRecipes(term, get().selectedTags);
+    get().loadRecipes(term, get().selectedTags, true);
   },
 
   setSelectedTags: (tags) => {
     set({ selectedTags: tags });
-    get().loadRecipes(get().searchTerm, tags);
+    get().loadRecipes(get().searchTerm, tags, true);
   },
   tags: [],
 

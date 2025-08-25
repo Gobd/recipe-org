@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StarRating } from '@/components/ui/star-rating';
+import { formatDeweyDecimal } from '@/lib/utils';
 import { useRecipeStore } from '@/store/recipeStore';
 import type { Recipe } from '@/types/recipe';
 
@@ -448,7 +449,7 @@ export function RecipePage() {
             </p>
             {recipe.deweyDecimal && (
               <p className="text-sm text-blue-600 font-medium">
-                📚 Dewey: {recipe.deweyDecimal}
+                📚 Dewey: {formatDeweyDecimal(recipe.deweyDecimal)}
               </p>
             )}
           </div>
