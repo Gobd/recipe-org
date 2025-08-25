@@ -1,11 +1,17 @@
 #!/usr/bin/env bun
+import type { BuildConfig, CompileBuildOptions } from 'bun';
 import plugin from 'bun-plugin-tailwind';
 import { existsSync } from 'fs';
 import { rm } from 'fs/promises';
 
 const buildAll = process.argv.includes('all');
 
-const buildArgs = {
+const isString = (value: unknown): value is string => {
+  return typeof value === 'string';
+};
+
+const buildArgs = <BuildConfig>{
+  bytecode: true,
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
@@ -15,10 +21,9 @@ const buildArgs = {
   sourcemap: 'inline',
 };
 
-const buildConfigs = [
+const buildConfigs: { compile: CompileBuildOptions; shouldBuild: boolean }[] = [
   {
     compile: {
-      bytecode: true,
       outfile: './recipe_manager.exe',
       target: 'bun-windows-x64-modern',
       windows: {
@@ -29,19 +34,22 @@ const buildConfigs = [
   },
   {
     compile: {
-      bytecode: true,
       outfile: './recipe_manager',
-      target: 'bun-darwin-arm64-modern',
+      target: 'bun-darwin-arm64',
     },
     shouldBuild: process.argv.includes('mac') || buildAll,
   },
 ];
 
 for (const buildConfig of buildConfigs) {
-  if (existsSync(buildConfig.compile.outfile)) {
-    console.log(`🗑️ Cleaning previous build at ${buildConfig.compile.outfile}`);
-    await rm(buildConfig.compile.outfile, { force: true, recursive: true });
+  if (
+    !isString(buildConfig.compile.outfile) ||
+    !existsSync(buildConfig.compile.outfile)
+  ) {
+    continue;
   }
+  console.log(`🗑️ Cleaning previous build at ${buildConfig.compile.outfile}`);
+  await rm(buildConfig.compile.outfile, { force: true, recursive: true });
 }
 
 const start = performance.now();

@@ -16,9 +16,9 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "bun-types": "latest",
     "typescript": "~5.9.2"
   },
   "name": "recipe-organizer",
