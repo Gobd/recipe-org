@@ -13,8 +13,8 @@ for (const artifact of buildArtifacts) {
 }
 
 const buildAll = process.argv.includes('all');
-const buildMac = process.argv.includes('mac');
-const buildWindows = process.argv.includes('windows');
+const buildMac = process.argv.includes('mac') || buildAll;
+const buildWindows = process.argv.includes('windows') || buildAll;
 
 const buildArgs = {
   define: {
@@ -28,23 +28,25 @@ const buildArgs = {
 
 const start = performance.now();
 
-if (buildAll || buildWindows) {
+if (buildWindows) {
   await Bun.build({
     compile: {
       bytecode: true,
-      outfile: 'recipe_manager.exe',
+      outfile: './recipe_manager.exe',
       target: 'bun-windows-x64-modern',
-      windowsHideConsole: true,
+      windows: {
+        hideConsole: true,
+      },
     },
     ...buildArgs,
   });
 }
 
-if (buildAll || buildMac) {
+if (buildMac) {
   await Bun.build({
     compile: {
       bytecode: true,
-      outfile: 'recipe_manager',
+      outfile: './recipe_manager',
       target: 'bun-darwin-arm64-modern',
     },
     ...buildArgs,
