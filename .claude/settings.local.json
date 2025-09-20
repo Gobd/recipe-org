@@ -1,6 +1,12 @@
 {
   "permissions": {
-    "allow": ["Bash(bun:*)", "Bash(curl:*)", "Bash(rm:*)", "Bash(rg:*)"],
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Bash(rg:*)",
+      "Bash(fd:*)"
+    ],
     "defaultMode": "acceptEdits"
   }
 }

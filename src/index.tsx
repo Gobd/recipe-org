@@ -136,6 +136,24 @@ const server = serve({
       },
     },
 
+    '/api/dewey/default-csv': {
+      async GET() {
+        try {
+          const file = Bun.file('./examples/dewey.csv');
+          const text = await file.text();
+          return new Response(text, {
+            headers: { 'Content-Type': 'text/csv' },
+          });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Failed to load default CSV file' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
     '/api/dewey/next-sequence/:baseCode': {
       async GET(req: Bun.BunRequest) {
         try {

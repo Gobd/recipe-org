@@ -8,6 +8,7 @@ interface DeweySelectorProps {
   selectedCode?: string;
   deweyCategories: DeweyCategory[];
   isLoading?: boolean;
+  onLoadDefaults?: () => void;
 }
 
 // Skeleton component for when calculations are loading
@@ -54,6 +55,7 @@ export function DeweySelector({
   selectedCode,
   deweyCategories,
   isLoading = false,
+  onLoadDefaults,
 }: DeweySelectorProps) {
   const [currentPath, setCurrentPath] = useState<DeweyCategory[]>([]);
   const [availableCategories, setAvailableCategories] = useState<
@@ -175,6 +177,12 @@ export function DeweySelector({
 
   const getCategoryHasChildren = (category: DeweyCategory) => {
     return categoryMaps.hasChildrenMap.get(category.deweyCode) || false;
+  };
+
+  const handleLoadDefaults = () => {
+    if (onLoadDefaults) {
+      onLoadDefaults();
+    }
   };
 
   // Show skeleton while calculating
@@ -309,19 +317,37 @@ export function DeweySelector({
           </div>
         ) : (
           <div className="p-4 text-center text-gray-500">
-            {currentPath.length === 0
-              ? 'No Dewey categories available. Please add categories through the admin interface.'
-              : 'No subcategories available at this level.'}
-            {currentPath.length > 0 && (
-              <Button
-                onClick={() => handleBackNavigation(currentPath.length - 2)}
-                variant="outline"
-                size="sm"
-                className="mt-2 flex items-center gap-1 mx-auto"
-              >
-                <ChevronLeft className="w-3 h-3" />
-                Go Back
-              </Button>
+            {currentPath.length === 0 ? (
+              <div>
+                <p className="mb-4">
+                  No Dewey categories available. Please add categories through
+                  the admin interface.
+                </p>
+                {onLoadDefaults && (
+                  <Button
+                    onClick={handleLoadDefaults}
+                    size="sm"
+                    className="flex items-center gap-1 mx-auto"
+                  >
+                    Load Default Categories
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="mb-2">
+                  No subcategories available at this level.
+                </p>
+                <Button
+                  onClick={() => handleBackNavigation(currentPath.length - 2)}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1 mx-auto"
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                  Go Back
+                </Button>
+              </div>
             )}
           </div>
         )}

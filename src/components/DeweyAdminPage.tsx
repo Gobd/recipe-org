@@ -183,6 +183,117 @@ export function DeweyAdminPage() {
     setEditingCategory(null);
   };
 
+  const processCSVFile = async (file: File) => {
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter((line) => line.trim());
+
+      let importedCount = 0;
+      const errors: string[] = [];
+      const categoriesMap = new Map<string, DeweyCategory>(); // Track imported categories
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        try {
+          // Parse CSV line - each field contains "code name" format
+          const fields = line.split(',');
+
+          // Process each field that contains data
+          for (const field of fields) {
+            const trimmedField = field.trim();
+            if (!trimmedField) continue;
+
+            // Parse the field to extract code and name
+            const { code, name } = parseCodeAndName(trimmedField);
+            if (!code || !name) continue;
+
+            // Skip if already processed
+            if (categoriesMap.has(code)) continue;
+
+            // Check if category already exists in database
+            const existingCategory = categories.find(
+              (cat) => cat.deweyCode === code,
+            );
+            if (existingCategory) {
+              categoriesMap.set(code, existingCategory);
+              continue;
+            }
+
+            // Determine level based on dewey code length
+            const level = getDeweyLevel(code);
+
+            // Determine parent code based on dewey hierarchy
+            const parentCode = getDeweyParentCode(code);
+
+            // Create the category
+            const newCategory = await addDeweyCategory({
+              deweyCode: code,
+              isActive: true,
+              level,
+              name,
+              parentCode: parentCode || undefined,
+            });
+
+            categoriesMap.set(code, newCategory);
+            importedCount++;
+          }
+        } catch (error) {
+          console.error(`Error importing line: ${line}`, error);
+          errors.push(
+            `Line "${line.substring(0, 50)}...": ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        }
+      }
+
+      if (errors.length > 0) {
+        setError(
+          `Import completed with ${errors.length} errors. Imported ${importedCount} categories. First error: ${errors[0]}`,
+        );
+      } else {
+        alert(`Successfully imported ${importedCount} categories!`);
+      }
+    } catch (error) {
+      console.error('Failed to import CSV:', error);
+      setError(
+        `Failed to import CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  };
+
+  const handleLoadDefaults = async () => {
+    if (
+      !confirm(
+        'Load default Dewey categories? This will add standard categories to the database.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      clearError();
+
+      // Fetch the default CSV file from the server
+      const response = await fetch('/api/dewey/default-csv');
+      if (!response.ok) {
+        throw new Error('Failed to load default CSV file');
+      }
+
+      const text = await response.text();
+
+      // Create a File object from the text to reuse existing import logic
+      const file = new File([text], 'dewey.csv', { type: 'text/csv' });
+
+      // Use the existing CSV import logic
+      await processCSVFile(file);
+    } catch (error) {
+      console.error('Failed to load default categories:', error);
+      setError(
+        `Failed to load default categories: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  };
+
   const handleImportFromCSV = async () => {
     // Create file input element
     const fileInput = document.createElement('input');
@@ -203,79 +314,7 @@ export function DeweyAdminPage() {
       }
 
       try {
-        const text = await file.text();
-        const lines = text.split('\n').filter((line) => line.trim());
-
-        let importedCount = 0;
-        const errors: string[] = [];
-        const categoriesMap = new Map<string, DeweyCategory>(); // Track imported categories
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-
-          try {
-            // Parse CSV line - each field contains "code name" format
-            const fields = line.split(',');
-
-            // Process each field that contains data
-            for (const field of fields) {
-              const trimmedField = field.trim();
-              if (!trimmedField) continue;
-
-              // Parse the field to extract code and name
-              const { code, name } = parseCodeAndName(trimmedField);
-              if (!code || !name) continue;
-
-              // Skip if already processed
-              if (categoriesMap.has(code)) continue;
-
-              // Check if category already exists in database
-              const existingCategory = categories.find(
-                (cat) => cat.deweyCode === code,
-              );
-              if (existingCategory) {
-                categoriesMap.set(code, existingCategory);
-                continue;
-              }
-
-              // Determine level based on dewey code length
-              const level = getDeweyLevel(code);
-
-              // Determine parent code based on dewey hierarchy
-              const parentCode = getDeweyParentCode(code);
-
-              // Create the category
-              const newCategory = await addDeweyCategory({
-                deweyCode: code,
-                isActive: true,
-                level,
-                name,
-                parentCode: parentCode || undefined,
-              });
-
-              categoriesMap.set(code, newCategory);
-              importedCount++;
-            }
-          } catch (error) {
-            console.error(`Error importing line: ${line}`, error);
-            errors.push(
-              `Line "${line.substring(0, 50)}...": ${error instanceof Error ? error.message : 'Unknown error'}`,
-            );
-          }
-        }
-
-        if (errors.length > 0) {
-          setError(
-            `Import completed with ${errors.length} errors. Imported ${importedCount} categories. First error: ${errors[0]}`,
-          );
-        } else {
-          alert(`Successfully imported ${importedCount} categories!`);
-        }
-      } catch (error) {
-        console.error('Failed to import CSV:', error);
-        setError(
-          `Failed to import CSV: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
+        await processCSVFile(file);
       } finally {
         document.body.removeChild(fileInput);
       }
@@ -764,7 +803,27 @@ export function DeweyAdminPage() {
 
             {categories.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No categories found. Import from CSV or add categories manually.
+                <p className="mb-4">
+                  No categories found. Import from CSV or add categories
+                  manually.
+                </p>
+                <div className="flex justify-center gap-2">
+                  <Button
+                    onClick={handleLoadDefaults}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Load Default Categories
+                  </Button>
+                  <Button
+                    onClick={handleImportFromCSV}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import Custom CSV
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
