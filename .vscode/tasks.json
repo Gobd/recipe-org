@@ -1,0 +1,29 @@
+{
+  "tasks": [
+    {
+      "command": "bun run dev",
+      "group": "build",
+      "label": "dev",
+      "presentation": {
+        "echo": true,
+        "focus": false,
+        "panel": "shared",
+        "reveal": "always"
+      },
+      "type": "shell"
+    },
+    {
+      "command": "bun run lint-fix",
+      "group": "build",
+      "label": "lint-fix",
+      "type": "shell"
+    },
+    {
+      "command": "bun run ts-check",
+      "group": "build",
+      "label": "ts-check",
+      "type": "shell"
+    }
+  ],
+  "version": "2.0.0"
+}

@@ -1,5 +1,6 @@
 import {
   ArrowLeft,
+  Camera,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -376,6 +377,25 @@ export function RecipePage() {
     e.target.value = '';
   };
 
+  const handleCameraCapture = () => {
+    const cameraInput = document.createElement('input');
+    cameraInput.type = 'file';
+    cameraInput.accept = 'image/*';
+    cameraInput.capture = 'environment'; // Use back camera by default
+    cameraInput.style.display = 'none';
+
+    cameraInput.onchange = (event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        handleFileUpload(files);
+      }
+    };
+
+    document.body.appendChild(cameraInput);
+    cameraInput.click();
+    document.body.removeChild(cameraInput);
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto p-8 max-w-4xl">
@@ -602,9 +622,12 @@ export function RecipePage() {
                 }
               }}
             >
-              <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Upload className="w-6 h-6 text-gray-400" />
+                <Camera className="w-6 h-6 text-gray-400" />
+              </div>
               <p className="text-sm text-gray-600 mb-2">
-                Drag and drop files here or click to browse
+                Drag and drop files here or use buttons below
               </p>
               <input
                 type="file"
@@ -614,15 +637,30 @@ export function RecipePage() {
                 id="file-upload"
                 disabled={uploading}
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => document.getElementById('file-upload')?.click()}
-                disabled={uploading}
-                className="mx-auto"
-              >
-                {uploading ? 'Uploading...' : 'Choose Files'}
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    document.getElementById('file-upload')?.click()
+                  }
+                  disabled={uploading}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploading ? 'Uploading...' : 'Choose Files'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCameraCapture}
+                  disabled={uploading}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Take Photo
+                </Button>
+              </div>
             </div>
 
             {/* Files List */}

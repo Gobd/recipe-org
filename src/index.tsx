@@ -1,4 +1,5 @@
 import { serve } from 'bun';
+import { deweyData } from '../examples/dewey.ts';
 import { RecipeDB } from './db';
 import index from './index.html';
 
@@ -130,6 +131,22 @@ const server = serve({
           console.error('API Error:', error);
           return Response.json(
             { error: 'Internal Server Error' },
+            { status: 500 },
+          );
+        }
+      },
+    },
+
+    '/api/dewey/default-csv': {
+      async GET() {
+        try {
+          return new Response(deweyData, {
+            headers: { 'Content-Type': 'text/csv' },
+          });
+        } catch (error) {
+          console.error('API Error:', error);
+          return Response.json(
+            { error: 'Failed to load default CSV file' },
             { status: 500 },
           );
         }

@@ -4,63 +4,77 @@ import type { DeweyCategory, Recipe } from '@/types/recipe';
 // Database setup
 const db = new SQL('sqlite://recipes.db');
 
-db`
-  CREATE TABLE IF NOT EXISTS recipes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    page TEXT,
-    url TEXT,
-    notes TEXT,
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`;
+// Initialize database tables
+const initializeDatabase = async () => {
+  try {
+    await db`
+      CREATE TABLE IF NOT EXISTS recipes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        page TEXT,
+        url TEXT,
+        notes TEXT,
+        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
 
-db`
-  CREATE TABLE IF NOT EXISTS tags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL
-  )
-`;
+    await db`
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL
+      )
+    `;
 
-db`
-  CREATE TABLE IF NOT EXISTS recipe_tags (
-    recipe_id INTEGER NOT NULL,
-    tag_id INTEGER NOT NULL,
-    PRIMARY KEY (recipe_id, tag_id),
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
-    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-  )
-`;
+    await db`
+      CREATE TABLE IF NOT EXISTS recipe_tags (
+        recipe_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY (recipe_id, tag_id),
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      )
+    `;
 
-db`
-  CREATE TABLE IF NOT EXISTS recipe_files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    recipe_id INTEGER NOT NULL,
-    filename TEXT NOT NULL,
-    content BLOB NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
-  )
-`;
+    await db`
+      CREATE TABLE IF NOT EXISTS recipe_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipe_id INTEGER NOT NULL,
+        filename TEXT NOT NULL,
+        content BLOB NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (recipe_id) REFERENCES recipes(id) ON DELETE CASCADE
+      )
+    `;
 
-db`
-  CREATE TABLE IF NOT EXISTS dewey_categories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    dewey_code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    level INTEGER NOT NULL,
-    parent_code TEXT,
-    is_active BOOLEAN DEFAULT 1
-  )
-`;
+    await db`
+      CREATE TABLE IF NOT EXISTS dewey_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dewey_code TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        parent_code TEXT,
+        is_active BOOLEAN DEFAULT 1
+      )
+    `;
 
-// Add dewey_decimal column to recipes table if it doesn't exist
-try {
-  db`ALTER TABLE recipes ADD COLUMN dewey_decimal TEXT`;
-} catch (_error) {
-  // Column already exists, ignore error
-}
+    // Add dewey_decimal column to recipes table if it doesn't exist
+    try {
+      await db`ALTER TABLE recipes ADD COLUMN dewey_decimal TEXT`;
+    } catch (_error) {
+      // Column already exists, ignore error
+    }
+
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize database:', error);
+  }
+};
+
+// Initialize database on startup
+(async () => {
+  await initializeDatabase();
+})();
 
 // Cache for database queries
 const cache = new Map<string, any>();

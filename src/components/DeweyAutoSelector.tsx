@@ -21,7 +21,7 @@ export function DeweyAutoSelector({
     deweyCategories,
     loadDeweyCategories,
     getNextDeweySequence,
-    loading,
+    deweyCategoriesLoading,
   } = useRecipeStore();
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function DeweyAutoSelector({
     }
   };
 
-  if (loading) {
+  if (deweyCategoriesLoading) {
     return (
       <div className="w-full p-4">
         <div className="text-center text-gray-500">
@@ -92,6 +92,7 @@ export function DeweyAutoSelector({
         onSelect={handleBaseCodeSelect}
         selectedCode={selectedBaseCode}
         deweyCategories={deweyCategories}
+        isLoading={deweyCategoriesLoading}
       />
 
       {selectedBaseCode && (
