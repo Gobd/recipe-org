@@ -36,9 +36,8 @@ export function HomePage() {
     getAllRecipesForExport,
   } = useRecipeStore();
 
-  // Show skeletons until we have initial data loaded (for LCP/layout shift optimization)
-  // Only show skeletons for initial loading, not for search operations
-  const showSkeletons = loading || availableTags.length === 0;
+  // Show skeletons only during initial loading, not when database is empty
+  const showSkeletons = loading;
 
   // Update URL params when search state changes
   useEffect(() => {

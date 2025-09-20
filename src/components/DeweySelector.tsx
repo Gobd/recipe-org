@@ -7,6 +7,7 @@ interface DeweySelectorProps {
   onSelect: (deweyCode: string) => void;
   selectedCode?: string;
   deweyCategories: DeweyCategory[];
+  isLoading?: boolean;
 }
 
 // Skeleton component for when calculations are loading
@@ -52,6 +53,7 @@ export function DeweySelector({
   onSelect,
   selectedCode,
   deweyCategories,
+  isLoading = false,
 }: DeweySelectorProps) {
   const [currentPath, setCurrentPath] = useState<DeweyCategory[]>([]);
   const [availableCategories, setAvailableCategories] = useState<
@@ -81,9 +83,9 @@ export function DeweySelector({
     return { categoryByCode, hasChildrenMap, subcountMap };
   }, [deweyCategories]);
 
-  // Track if we're still processing calculations or waiting for categories to load
+  // Track if we're still processing calculations or actively loading
   const isCalculating =
-    deweyCategories.length === 0 ||
+    isLoading ||
     (deweyCategories.length > 0 && categoryMaps.categoryByCode.size === 0);
 
   // Initialize or update the current path based on selected code
