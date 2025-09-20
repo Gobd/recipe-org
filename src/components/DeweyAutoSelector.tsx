@@ -1,7 +1,5 @@
-import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { DeweySelector } from '@/components/DeweySelector';
-import { Button } from '@/components/ui/button';
 import { useRecipeStore } from '@/store/recipeStore';
 
 interface DeweyAutoSelectorProps {
@@ -13,8 +11,6 @@ export function DeweyAutoSelector({
   onSelect,
   selectedCode,
 }: DeweyAutoSelectorProps) {
-  const [selectedBaseCode, setSelectedBaseCode] = useState<string>('');
-  const [nextSequence, setNextSequence] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   const {
@@ -28,19 +24,12 @@ export function DeweyAutoSelector({
     loadDeweyCategories();
   }, [loadDeweyCategories]);
 
-  useEffect(() => {
-    if (selectedCode) {
-      setSelectedBaseCode(selectedCode);
-    }
-  }, [selectedCode]);
-
   const handleBaseCodeSelect = async (deweyCode: string) => {
-    setSelectedBaseCode(deweyCode);
-
     // Check if this is a complete path that can generate a sequence
     const selectedCategory = deweyCategories.find(
       (cat) => cat.deweyCode === deweyCode,
     );
+
     if (selectedCategory) {
       // Check if there are any child categories
       const hasChildren = deweyCategories.some(
@@ -52,27 +41,18 @@ export function DeweyAutoSelector({
         try {
           setIsGenerating(true);
           const sequence = await getNextDeweySequence(deweyCode);
-          setNextSequence(sequence);
+          onSelect(sequence);
         } catch (error) {
           console.error('Failed to get next sequence:', error);
+          // Fallback to base code if sequence generation fails
+          onSelect(deweyCode);
         } finally {
           setIsGenerating(false);
         }
       } else {
-        setNextSequence('');
+        // No sequence generation, just use the base code
+        onSelect(deweyCode);
       }
-    }
-  };
-
-  const handleUseGeneratedSequence = () => {
-    if (nextSequence) {
-      onSelect(nextSequence);
-    }
-  };
-
-  const handleUseBaseCode = () => {
-    if (selectedBaseCode) {
-      onSelect(selectedBaseCode);
     }
   };
 
@@ -90,64 +70,17 @@ export function DeweyAutoSelector({
     <div className="w-full space-y-4">
       <DeweySelector
         onSelect={handleBaseCodeSelect}
-        selectedCode={selectedBaseCode}
+        selectedCode={selectedCode}
         deweyCategories={deweyCategories}
         isLoading={deweyCategoriesLoading}
       />
 
-      {selectedBaseCode && (
+      {isGenerating && (
         <div className="border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
-            Selected Classification
-          </h4>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-              <div>
-                <div className="font-mono text-sm font-medium">
-                  {selectedBaseCode}
-                </div>
-                <div className="text-xs text-gray-600">Base classification</div>
-              </div>
-              <Button
-                onClick={handleUseBaseCode}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Use This
-              </Button>
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-600">
+              Generating sequence number...
             </div>
-
-            {isGenerating && (
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  Generating next sequence number...
-                </div>
-              </div>
-            )}
-
-            {nextSequence && (
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                <div>
-                  <div className="font-mono text-sm font-medium">
-                    {nextSequence}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    Auto-generated sequence number
-                  </div>
-                </div>
-                <Button
-                  onClick={handleUseGeneratedSequence}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Use Auto Number
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       )}

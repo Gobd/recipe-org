@@ -134,25 +134,25 @@ export function DeweySelector({
       }
     }
   }, [currentPath, deweyCategories]);
+  const handleBrowse = (category: DeweyCategory) => {
+    // Navigate to show children - never call onSelect
+    const newPath = [...currentPath, category];
+    setCurrentPath(newPath);
+  };
 
-  const handleCategorySelect = (category: DeweyCategory) => {
-    // Check if this category has children
+  const handleFinalSelect = (category: DeweyCategory) => {
+    // Only allow selecting leaf categories (no children)
     const hasChildren =
       categoryMaps.hasChildrenMap.get(category.deweyCode) || false;
 
     if (hasChildren) {
-      // Navigate to this level to show children
+      // If it has children, navigate to show children instead of selecting
       const newPath = [...currentPath, category];
       setCurrentPath(newPath);
     } else {
       // This is a leaf category, select it
       onSelect(category.deweyCode);
     }
-  };
-
-  const handleFinalSelect = (category: DeweyCategory) => {
-    // Allow selecting any category, even if it has children
-    onSelect(category.deweyCode);
   };
 
   const handleBackNavigation = (targetIndex: number) => {
@@ -201,7 +201,12 @@ export function DeweySelector({
             Dewey Decimal Classification
           </label>
           {selectedCode && (
-            <Button onClick={handleClear} variant="outline" size="sm">
+            <Button
+              type="button"
+              onClick={handleClear}
+              variant="outline"
+              size="sm"
+            >
               Clear Selection
             </Button>
           )}
@@ -291,23 +296,25 @@ export function DeweySelector({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Button
-                      onClick={() => handleFinalSelect(category)}
-                      size="sm"
-                      variant={selected ? 'default' : 'outline'}
-                      className="text-xs"
-                    >
-                      {selected ? 'Selected' : 'Select'}
-                    </Button>
-
-                    {hasChildren && (
+                    {hasChildren ? (
                       <Button
-                        onClick={() => handleCategorySelect(category)}
+                        type="button"
+                        onClick={() => handleBrowse(category)}
                         size="sm"
                         variant="ghost"
                         className="text-xs flex items-center gap-1"
                       >
                         Browse <ChevronRight className="w-3 h-3" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => handleFinalSelect(category)}
+                        size="sm"
+                        variant={selected ? 'default' : 'outline'}
+                        className="text-xs"
+                      >
+                        {selected ? 'Selected' : 'Select'}
                       </Button>
                     )}
                   </div>
@@ -325,6 +332,7 @@ export function DeweySelector({
                 </p>
                 {onLoadDefaults && (
                   <Button
+                    type="button"
                     onClick={handleLoadDefaults}
                     size="sm"
                     className="flex items-center gap-1 mx-auto"
@@ -339,6 +347,7 @@ export function DeweySelector({
                   No subcategories available at this level.
                 </p>
                 <Button
+                  type="button"
                   onClick={() => handleBackNavigation(currentPath.length - 2)}
                   variant="outline"
                   size="sm"
