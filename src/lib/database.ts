@@ -75,11 +75,36 @@ export const RecipeDB = {
   // Dewey Category operations
   async getAllDeweyCategories(): Promise<DeweyCategory[]> {
     const response = await fetch(`${API_BASE}/dewey`);
-    return response.json();
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch Dewey categories:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
+    const categories = await response.json();
+    if (!Array.isArray(categories)) {
+      console.error('Expected array of Dewey categories, got:', categories);
+      return [];
+    }
+    return categories;
   },
   getAllRecipes: async (): Promise<Recipe[]> => {
     const response = await fetch(`${API_BASE}/recipes`);
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch recipes:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
     const recipes = await response.json();
+    if (!Array.isArray(recipes)) {
+      console.error('Expected array of recipes, got:', recipes);
+      return [];
+    }
     return recipes.map((recipe: any) => ({
       ...recipe,
       createdAt: new Date(recipe.createdAt),
@@ -88,7 +113,20 @@ export const RecipeDB = {
 
   getAllTags: async (): Promise<string[]> => {
     const response = await fetch(`${API_BASE}/tags`);
-    return response.json();
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch tags:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
+    const tags = await response.json();
+    if (!Array.isArray(tags)) {
+      console.error('Expected array of tags, got:', tags);
+      return [];
+    }
+    return tags;
   },
 
   async getNextDeweySequence(baseCode: string): Promise<string> {
@@ -137,7 +175,19 @@ export const RecipeDB = {
     const response = await fetch(
       `${API_BASE}/recipes/dewey/${encodeURIComponent(deweyCode)}`,
     );
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch recipes by Dewey code:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
     const recipes = await response.json();
+    if (!Array.isArray(recipes)) {
+      console.error('Expected array of recipes by Dewey code, got:', recipes);
+      return [];
+    }
     return recipes.map((recipe: any) => ({
       ...recipe,
       createdAt: new Date(recipe.createdAt),
@@ -148,7 +198,20 @@ export const RecipeDB = {
     Array<{ name: string; count: number }>
   > => {
     const response = await fetch(`${API_BASE}/tags/counts`);
-    return response.json();
+    if (!response.ok) {
+      console.error(
+        'Failed to fetch tags with counts:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
+    const tagsWithCounts = await response.json();
+    if (!Array.isArray(tagsWithCounts)) {
+      console.error('Expected array of tags with counts, got:', tagsWithCounts);
+      return [];
+    }
+    return tagsWithCounts;
   },
 
   searchRecipes: async (
@@ -161,7 +224,19 @@ export const RecipeDB = {
       params.set('tags', JSON.stringify(selectedTags));
 
     const response = await fetch(`${API_BASE}/recipes?${params}`);
+    if (!response.ok) {
+      console.error(
+        'Failed to search recipes:',
+        response.status,
+        response.statusText,
+      );
+      return [];
+    }
     const recipes = await response.json();
+    if (!Array.isArray(recipes)) {
+      console.error('Expected array of recipes from search, got:', recipes);
+      return [];
+    }
     return recipes.map((recipe: any) => ({
       ...recipe,
       createdAt: new Date(recipe.createdAt),
