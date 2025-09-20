@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "console": "integratedTerminal",
+      "name": "Debug Bun Server",
+      "program": "${workspaceFolder}/src/index.tsx",
+      "request": "launch",
+      "runtimeArgs": ["--inspect", "--hot"],
+      "runtimeExecutable": "bun",
+      "type": "node"
+    }
+  ],
+  "version": "0.2.0"
+}
