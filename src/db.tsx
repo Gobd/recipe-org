@@ -72,7 +72,9 @@ const initializeDatabase = async () => {
 };
 
 // Initialize database on startup
-await initializeDatabase();
+(async () => {
+  await initializeDatabase();
+})();
 
 // Cache for database queries
 const cache = new Map<string, any>();

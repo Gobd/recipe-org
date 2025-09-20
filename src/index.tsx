@@ -1,4 +1,5 @@
 import { serve } from 'bun';
+import { deweyData } from '../examples/dewey.ts';
 import { RecipeDB } from './db';
 import index from './index.html';
 
@@ -139,9 +140,7 @@ const server = serve({
     '/api/dewey/default-csv': {
       async GET() {
         try {
-          const file = Bun.file('./examples/dewey.csv');
-          const text = await file.text();
-          return new Response(text, {
+          return new Response(deweyData, {
             headers: { 'Content-Type': 'text/csv' },
           });
         } catch (error) {
