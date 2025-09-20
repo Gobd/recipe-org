@@ -157,7 +157,7 @@ export function RecipePage() {
       const category = deweyCategories.find(
         (cat) => cat.deweyCode === currentCode,
       );
-      if (category && category.parentCode) {
+      if (category?.parentCode) {
         currentCode = category.parentCode;
       } else {
         break;
