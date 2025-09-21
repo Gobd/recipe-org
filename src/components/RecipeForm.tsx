@@ -36,35 +36,47 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
   const getDeweyHierarchyTags = (deweyCode: string): string[] => {
     if (!deweyCode) return [];
 
+    // For generated sequences like "411.21.001", we need to use the base code "411.21"
+    // to build the hierarchy since the sequence doesn't exist in the database yet
+    let baseCode = deweyCode;
+    const isGeneratedSequence = deweyCode.match(/\.\d{3}$/); // ends with .### pattern
+
+    if (isGeneratedSequence) {
+      // Extract base code by removing the last .### part
+      const lastDotIndex = deweyCode.lastIndexOf('.');
+      baseCode = deweyCode.substring(0, lastDotIndex);
+    }
+
     const hierarchyTags: string[] = [];
-    const levels = buildDeweyHierarchy(deweyCode);
+    const levels = buildDeweyHierarchy(baseCode);
 
     for (const levelCode of levels) {
       const category = deweyCategories.find(
         (cat) => cat.deweyCode === levelCode,
       );
       if (category) {
-        hierarchyTags.push(`${category.deweyCode} ${category.name}`);
+        hierarchyTags.push(category.name);
       }
     }
 
     return hierarchyTags;
   };
 
-  // Build all parent levels for a Dewey code
+  // Build all parent levels for a Dewey code using actual database relationships
   const buildDeweyHierarchy = (deweyCode: string): string[] => {
     const levels: string[] = [];
     let currentCode = deweyCode;
 
-    // Add the current code
-    levels.unshift(currentCode);
-
-    // Build parent codes
+    // Start with the selected code and work up the hierarchy
     while (currentCode) {
-      const parentCode = getDeweyParent(currentCode);
-      if (parentCode) {
-        levels.unshift(parentCode);
-        currentCode = parentCode;
+      levels.unshift(currentCode);
+
+      // Find the category and get its parent code
+      const category = deweyCategories.find(
+        (cat) => cat.deweyCode === currentCode,
+      );
+      if (category?.parentCode) {
+        currentCode = category.parentCode;
       } else {
         break;
       }
@@ -73,47 +85,26 @@ export function RecipeForm({ availableTags, onAddRecipe }: RecipeFormProps) {
     return levels;
   };
 
-  // Get parent code for a Dewey code
-  const getDeweyParent = (deweyCode: string): string | undefined => {
-    if (!deweyCode) return undefined;
-
-    // Handle decimal hierarchy: "000.00" -> "000.0" -> "000"
-    if (deweyCode.includes('.')) {
-      const lastDotIndex = deweyCode.lastIndexOf('.');
-      const beforeDot = deweyCode.substring(0, lastDotIndex);
-      const afterDot = deweyCode.substring(lastDotIndex + 1);
-
-      if (afterDot.length > 1) {
-        // Remove last digit after decimal: "000.00" -> "000.0"
-        return `${beforeDot}.${afterDot.slice(0, -1)}`;
-      } else {
-        // Remove decimal part: "000.0" -> "000"
-        return beforeDot;
-      }
-    }
-
-    // Handle digit hierarchy: "000" -> "00" -> "0" -> undefined
-    if (deweyCode.length <= 1) return undefined;
-    return deweyCode.slice(0, -1);
-  };
-
   const handleDeweySelect = (deweyCode: string) => {
     setDeweyDecimal(deweyCode);
 
     // Auto-generate hierarchical tags
+    const allTags = [...tags];
+
+    // Get all dewey category names to identify existing dewey tags
+    const allDeweyNames = deweyCategories.map((cat) => cat.name);
+
+    // Remove any existing Dewey category tags
+    const nonDeweyTags = allTags.filter((tag) => !allDeweyNames.includes(tag));
+
     if (deweyCode) {
       const hierarchyTags = getDeweyHierarchyTags(deweyCode);
-
-      // Merge with existing tags, removing duplicates
-      const allTags = [...tags];
-
-      // Remove any existing Dewey tags first (tags that look like "### Name")
-      const nonDeweyTags = allTags.filter((tag) => !/^\d+(\.\d+)*\s/.test(tag));
-
       // Add the new hierarchy tags
       const mergedTags = [...nonDeweyTags, ...hierarchyTags];
-
       setTags(mergedTags);
+    } else {
+      // If dewey code is cleared, just keep non-dewey tags
+      setTags(nonDeweyTags);
     }
   };
 
